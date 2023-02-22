@@ -2,7 +2,7 @@ _base_ = '../../configs/_base_/default_runtime.py'
 
 
 # =======================custom set==========================================
-TAGS = ["yolov7", "300e"]
+TAGS = ["h100", "yolov7", "300e"]
 ALGO_NAME = "yolov7"
 DATASET_NAME = "VisDrone"
 
@@ -42,11 +42,22 @@ persistent_workers = True
 
 # -----model related-----
 # Basic size of multi-scale prior box
+VisDrone_anchors_v5_k_means = [
+    [(3, 5), (4, 9), (8, 6)], 
+    [(8, 14), (16, 9), (15, 18)], 
+    [(31, 17), (22, 35), (53, 38)]
+]
+DE_anchors = [
+    [(3, 4), (4, 8), (7, 6)], 
+    [(7, 12), (14, 9), (11, 18)], 
+    [(25, 14), (21, 27), (44, 35)]
+]
 anchors = [
     [(12, 16), (19, 36), (40, 28)],  # P3/8
     [(36, 75), (76, 55), (72, 146)],  # P4/16
     [(142, 110), (192, 243), (459, 401)]  # P5/32
 ]
+anchors = DE_anchors
 # -----train val related-----
 # Base learning rate for optim_wrapper. Corresponding to 8xb16=128 bs
 base_lr = 0.01
@@ -308,6 +319,14 @@ optim_wrapper = dict(
         nesterov=True,
         batch_size_per_gpu=train_batch_size_per_gpu),
     constructor='YOLOv7OptimWrapperConstructor')
+
+# SGD -> AdamW
+optim_wrapper = dict(
+    # _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(
     param_scheduler=dict(
