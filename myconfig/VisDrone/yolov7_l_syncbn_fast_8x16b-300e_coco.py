@@ -2,8 +2,9 @@ _base_ = '../../configs/_base_/default_runtime.py'
 
 
 # =======================custom set==========================================
-TAGS = ["h100", "yolov7", "300e"]
-ALGO_NAME = "yolov7"
+TAGS = ["h100", "yolov7_l", "300e"]
+GROUP_NAME = "yolov7_l"
+ALGO_NAME = "yolov7_l"
 DATASET_NAME = "VisDrone"
 
 CLASSES = ("pedestrian", "people", "bicycle", "car", "van", "truck", "tricycle", "awning-tricycle", "bus", "motor")
@@ -13,7 +14,7 @@ load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_l_syncbn_fas
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,
-    group=ALGO_NAME,
+    group=GROUP_NAME,
     name=ALGO_NAME,
     tags=TAGS
 )
@@ -57,7 +58,9 @@ anchors = [
     [(36, 75), (76, 55), (72, 146)],  # P4/16
     [(142, 110), (192, 243), (459, 401)]  # P5/32
 ]
-anchors = DE_anchors
+
+# anchors = DE_anchors # 修改anchor
+
 # -----train val related-----
 # Base learning rate for optim_wrapper. Corresponding to 8xb16=128 bs
 base_lr = 0.01
@@ -321,12 +324,12 @@ optim_wrapper = dict(
     constructor='YOLOv7OptimWrapperConstructor')
 
 # SGD -> AdamW
-optim_wrapper = dict(
-    # _delete_=True,
-    type='OptimWrapper',
-    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
-    paramwise_cfg=dict(
-        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
+# optim_wrapper = dict(
+#     # _delete_=True,
+#     type='OptimWrapper',
+#     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+#     paramwise_cfg=dict(
+#         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(
     param_scheduler=dict(
