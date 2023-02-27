@@ -18,12 +18,12 @@ cd ~/mmyolo
 
 set -x
 
-CONFIG_FILE="myconfig/VisDrone-v100/yolov7_tiny_p2_new.py"
+CONFIG_FILE="myconfig/VisDrone-v100/yolov7_tiny_bifpn.py"
 
 name="yolov7_tiny-"
 Wandb_NameALL="visualizer.vis_backends.1.init_kwargs.name=${name}"
 
-tags="['v100','yolov7_tiny','300e','amp','p2','v5-kmeans','cbam1234']"
+tags="['v100','yolov7_tiny','300e','amp','bifpn']"
 Wandb_TagsALL="visualizer.vis_backends.1.init_kwargs.tags=\"${tags}\""
 
 batch_size="train_dataloader.batch_size="
@@ -31,4 +31,16 @@ batch_size="train_dataloader.batch_size="
 # 单GPU训练
 # python tools/train.py $CONFIG_FILE --cfg-options ${Wandb_NameALL}4 ${Wandb_TagsALL} ${batch_size}4
 
-CUDA_VISIBLE_DEVICES=1 python tools/train.py $CONFIG_FILE --amp --cfg-options ${Wandb_NameALL}32-T4-v5kmeans-p2-cbam1234 ${Wandb_TagsALL}
+# python tools/train.py $CONFIG_FILE --cfg-options ${Wandb_NameALL}8 ${Wandb_TagsALL} ${batch_size}8
+
+# python tools/train.py $CONFIG_FILE --cfg-options ${Wandb_NameALL}16 ${Wandb_TagsALL} ${batch_size}16
+
+# python tools/train.py $CONFIG_FILE --cfg-options ${Wandb_NameALL}24 ${Wandb_TagsALL} ${batch_size}24
+
+# python tools/train.py $CONFIG_FILE --cfg-options ${Wandb_NameALL}32 ${Wandb_TagsALL} ${batch_size}32
+
+# python tools/train.py $CONFIG_FILE --cfg-options ${Wandb_NameALL}40 ${Wandb_TagsALL} ${batch_size}40
+
+# python tools/train.py $CONFIG_FILE --cfg-options ${Wandb_NameALL}48 ${Wandb_TagsALL} ${batch_size}48
+
+CUDA_VISIBLE_DEVICES=0 python tools/train.py $CONFIG_FILE --amp --cfg-options ${Wandb_NameALL}64-v100-bifpn ${Wandb_TagsALL}

@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["v100", "yolov7_tiny", "300e"]
+TAGS = ["p2","originAdamW"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny"
+ALGO_NAME = "yolov7_tiny_p2_originAdamW"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -71,12 +71,16 @@ model = dict(
     backbone=dict(
         arch='Tiny', 
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        out_indices=(1, 2, 3, 4),
-        plugins=[
-            dict(
-                cfg=dict(type='CBAM'),
-                stages=(True, True, True, True))
-        ]),
+        out_indices=(1, 2, 3, 4)),
+    # backbone=dict(
+    #     arch='Tiny', 
+    #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+    #     out_indices=(1, 2, 3, 4),
+    #     plugins=[
+    #         dict(
+    #             cfg=dict(type='CBAM'),
+    #             stages=(True, True, True, True))
+    #     ]),    
     neck=dict(
         is_tiny_version=True,
         in_channels=[64, 128, 256, 512],
@@ -158,27 +162,28 @@ train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
 
+# base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
 base_lr = _base_.base_lr
 weight_decay = _base_.weight_decay
 
-optim_wrapper = dict(
-    type='OptimWrapper',
-    optimizer=dict(
-        type='SGD',
-        lr=base_lr,
-        momentum=0.937,
-        weight_decay=weight_decay,
-        nesterov=True,
-        batch_size_per_gpu=train_batch_size_per_gpu),
-    constructor='YOLOv7OptimWrapperConstructor')
+# optim_wrapper = dict(
+#     type='OptimWrapper',
+#     optimizer=dict(
+#         type='SGD',
+#         lr=base_lr,
+#         momentum=0.937,
+#         weight_decay=weight_decay,
+#         nesterov=True,
+#         batch_size_per_gpu=train_batch_size_per_gpu),
+#     constructor='YOLOv7OptimWrapperConstructor')
 
 # SGD -> AdamW
-# optim_wrapper = dict(
-#     _delete_=True,
-#     type='OptimWrapper',
-#     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
-#     paramwise_cfg=dict(
-#         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))

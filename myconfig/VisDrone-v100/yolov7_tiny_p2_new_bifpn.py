@@ -20,28 +20,35 @@ work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
 
 load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
 # ========================modified parameters========================
-strides = [8, 16, 32]
+num_det_layers = 4
+loss_bbox_weight = 0.05
+strides = [4, 8, 16, 32]  # Strides of multi-scale prior box
+norm_cfg = dict(type='BN', momentum=0.03, eps=0.001)
+obj_level_weights=[4.0, 1.0, 0.25, 0.06]
 # -----model related-----
 # Basic size of multi-scale prior box
-VisDrone_anchors_v5_k_means = [
-    [(3, 5), (4, 9), (8, 6)], 
-    [(8, 14), (16, 9), (15, 18)], 
-    [(31, 17), (22, 35), (53, 38)]
+v5_k_means = [
+    [[3, 4], [3, 7], [6, 6]], 
+    [[6, 11], [14, 7], [10, 15]], 
+    [[17, 12], [17, 23], [31, 16]], 
+    [[27, 36], [54, 28], [67, 82]]
 ]
-DE_anchors = [
-    [(3, 4), (4, 8), (7, 6)], 
-    [(7, 12), (14, 9), (11, 18)], 
-    [(25, 14), (21, 27), (44, 35)]
+k_means = [
+    [[4, 5], [6, 10], [10, 7]], 
+    [[10, 17], [18, 11], [16, 25]], 
+    [[29, 16], [26, 37], [45, 26]], 
+    [[42, 59], [71, 41], [95, 86]]
 ]
-origin_anchors = [
-    [(12, 16), (19, 36), (40, 28)],  # P3/8
-    [(36, 75), (76, 55), (72, 146)],  # P4/16
-    [(142, 110), (192, 243), (459, 401)]  # P5/32
+DE = [
+    [[3, 4], [4, 7], [6, 5]], 
+    [[5, 11], [10, 7], [9, 15]], 
+    [[16, 10], [14, 21], [24, 14]], 
+    [[23, 31], [37, 21], [51, 44]]
 ]
-anchors = origin_anchors # 修改anchor
+anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 64
+train_batch_size_per_gpu = 32
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -58,38 +65,48 @@ loss_obj_weight = 1.0
 lr_factor = 0.01  # Learning rate scaling factor
 # ===============================Unmodified in most cases====================
 num_classes = _base_.num_classes
-num_det_layers = _base_.num_det_layers
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
-        arch='Tiny', act_cfg=dict(type='LeakyReLU', negative_slope=0.1)),
+        arch='Tiny', 
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        out_indices=(1, 2, 3, 4),
+        plugins=[
+            dict(
+                cfg=dict(type='CBAM'),
+                #(False, False, False, False) (True, True, True, True)
+                stages=(True, True, True, True))
+        ]),
     # neck=dict(
     #     is_tiny_version=True,
-    #     in_channels=[128, 256, 512],
-    #     out_channels=[64, 128, 256],
+    #     in_channels=[64, 128, 256, 512],
+    #     out_channels=[32, 64, 128, 256],
     #     block_cfg=dict(
     #         _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
     #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
     #     use_repconv_outs=False),
     neck=dict(
         _delete_ = True,
-        type='BiFPN',
+        type='BiFPN4',
         num_stages=3,
-        in_channels=[128, 256, 512],
+        in_channels=[64, 128, 256, 512],
         out_channels=64,
         start_level=0,
         norm_cfg=dict(type='SyncBN', requires_grad=True, eps=1e-3, momentum=0.01)),
-    
     bbox_head=dict(
         head_module=dict(
-            in_channels=[64, 64, 64],
-            featmap_strides=strides),
-        prior_generator=dict(base_sizes=anchors),
-        loss_cls=dict(loss_weight=loss_cls_weight *
-                      (num_classes / 80 * 3 / num_det_layers)),
-        loss_obj=dict(loss_weight=loss_obj_weight *
-                      ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
+            type='YOLOv7p6HeadModule',
+            in_channels=[64, 64, 64, 64],
+            use_aux = False,
+            featmap_strides=strides,
+            norm_cfg=norm_cfg,
+            act_cfg=dict(type='SiLU', inplace=True)),
+        prior_generator=dict(base_sizes=anchors, strides=strides),
+        obj_level_weights=obj_level_weights,
+        loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
+        loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
+        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [
     dict(
@@ -150,18 +167,28 @@ train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
 
-base_lr = _base_.base_lr
+# base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
+base_lr = 0.004
 weight_decay = _base_.weight_decay
 
+# optim_wrapper = dict(
+#     type='OptimWrapper',
+#     optimizer=dict(
+#         type='SGD',
+#         lr=base_lr,
+#         momentum=0.937,
+#         weight_decay=weight_decay,
+#         nesterov=True,
+#         batch_size_per_gpu=train_batch_size_per_gpu),
+#     constructor='YOLOv7OptimWrapperConstructor')
+
+# SGD -> AdamW
 optim_wrapper = dict(
+    _delete_=True,
     type='OptimWrapper',
-    optimizer=dict(
-        type='SGD',
-        lr=base_lr,
-        momentum=0.937,
-        weight_decay=weight_decay,
-        nesterov=True,
-        batch_size_per_gpu=train_batch_size_per_gpu),
-    constructor='YOLOv7OptimWrapperConstructor')
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
+
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))

@@ -1,15 +1,10 @@
-_base_ = './yolov7_l_syncbn_fast_8x16b-300e_coco.py'
+_base_ = './yolov7_l_origin.py'
 
-# =======================custom set==========================================
+# ======================== wandb & run ==============================
 TAGS = ["v100", "yolov7_tiny", "300e"]
 GROUP_NAME = "yolov7_tiny"
 ALGO_NAME = "yolov7_tiny"
 DATASET_NAME = "VisDrone"
-
-CLASSES = ("pedestrian", "people", "bicycle", "car", "van", "truck", "tricycle", "awning-tricycle", "bus", "motor")
-METAINFO = {'classes': CLASSES}
-
-load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,
@@ -18,39 +13,43 @@ Wandb_init_kwargs = dict(
     tags=TAGS
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
+
 import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
 
+load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
 # ========================modified parameters========================
+num_det_layers = 4
+loss_bbox_weight = 0.05
+strides = [4, 8, 16, 32]  # Strides of multi-scale prior box
+norm_cfg = dict(type='BN', momentum=0.03, eps=0.001)
+obj_level_weights=[4.0, 1.0, 0.25, 0.06]
+# -----model related-----
+# Basic size of multi-scale prior box
 v5_k_means = [
     [[3, 4], [3, 7], [6, 6]], 
     [[6, 11], [14, 7], [10, 15]], 
     [[17, 12], [17, 23], [31, 16]], 
     [[27, 36], [54, 28], [67, 82]]
 ]
-
 k_means = [
     [[4, 5], [6, 10], [10, 7]], 
     [[10, 17], [18, 11], [16, 25]], 
     [[29, 16], [26, 37], [45, 26]], 
     [[42, 59], [71, 41], [95, 86]]
 ]
-
 DE = [
     [[3, 4], [4, 7], [6, 5]], 
     [[5, 11], [10, 7], [9, 15]], 
     [[16, 10], [14, 21], [24, 14]], 
     [[23, 31], [37, 21], [51, 44]]
 ]
+anchors = v5_k_means # 修改anchor
 
-anchors = v5_k_means
+# ---- data related -------
+train_batch_size_per_gpu = 32
 
-strides = [4, 8, 16, 32]  # Strides of multi-scale prior box
-num_det_layers = 4
-loss_bbox_weight = 0.05
-norm_cfg = dict(type='BN', momentum=0.03, eps=0.001)
-# -----model related-----
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
 scaling_ratio_range = (0.5, 1.6)  # YOLOv5RandomAffine
@@ -70,7 +69,8 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
-        arch='Tiny', act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        arch='Tiny', 
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4),
         plugins=[
             dict(
@@ -94,10 +94,10 @@ model = dict(
             norm_cfg=norm_cfg,
             act_cfg=dict(type='SiLU', inplace=True)),
         prior_generator=dict(base_sizes=anchors, strides=strides),
+        obj_level_weights=obj_level_weights,
         loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
         loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
-        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers)),
-        obj_level_weights=[4.0, 1.0, 0.25, 0.06]))
+        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [
     dict(
@@ -154,18 +154,31 @@ train_pipeline = [
                    'flip_direction'))
 ]
 
-train_dataloader = dict(dataset=dict(pipeline=train_pipeline))
-default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
+train_dataloader = dict(
+    batch_size=train_batch_size_per_gpu,
+    dataset=dict(pipeline=train_pipeline))
 
+base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
+weight_decay = _base_.weight_decay
 
-base_lr = 0.0025
-
-# optim_wrapper = dict(optimizer=dict(lr=base_lr))
+optim_wrapper = dict(
+    type='OptimWrapper',
+    optimizer=dict(
+        type='SGD',
+        lr=base_lr,
+        momentum=0.937,
+        weight_decay=weight_decay,
+        nesterov=True,
+        batch_size_per_gpu=train_batch_size_per_gpu),
+    constructor='YOLOv7OptimWrapperConstructor')
 
 # SGD -> AdamW
-optim_wrapper = dict(
-    _delete_=True,
-    type='OptimWrapper',
-    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
-    paramwise_cfg=dict(
-        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
+# optim_wrapper = dict(
+#     _delete_=True,
+#     type='OptimWrapper',
+#     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+#     paramwise_cfg=dict(
+#         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
+
+
+default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
