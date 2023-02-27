@@ -1,31 +1,10 @@
-_base_ = '../../configs/_base_/default_runtime.py'
-
-
-# =======================custom set==========================================
-TAGS = ["h100", "yolov7_l", "300e"]
-GROUP_NAME = "yolov7_l"
-ALGO_NAME = "yolov7_l"
-DATASET_NAME = "VisDrone"
-
-CLASSES = ("pedestrian", "people", "bicycle", "car", "van", "truck", "tricycle", "awning-tricycle", "bus", "motor")
-METAINFO = {'classes': CLASSES}
-
-load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_l_syncbn_fast_8x16b-300e_coco/yolov7_l_syncbn_fast_8x16b-300e_coco_20221123_023601-8113c0eb.pth"
-
-Wandb_init_kwargs = dict(
-    project=DATASET_NAME,
-    group=GROUP_NAME,
-    name=ALGO_NAME,
-    tags=TAGS
-)
-visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
-import datetime as dt
-NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
-work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
+_base_ = '../../../configs/_base_/default_runtime.py'
 
 # ========================Frequently modified parameters======================
 # -----data related-----
 data_root = 'data/VisDrone/'  # Root path of data
+CLASSES = ("pedestrian", "people", "bicycle", "car", "van", "truck", "tricycle", "awning-tricycle", "bus", "motor")
+METAINFO = {'classes': CLASSES}
 # Path of train annotation file
 train_ann_file = 'annotations/train.json'
 train_data_prefix = 'images/train/'  # Prefix of train image path
@@ -43,24 +22,11 @@ persistent_workers = True
 
 # -----model related-----
 # Basic size of multi-scale prior box
-VisDrone_anchors_v5_k_means = [
-    [(3, 5), (4, 9), (8, 6)], 
-    [(8, 14), (16, 9), (15, 18)], 
-    [(31, 17), (22, 35), (53, 38)]
-]
-DE_anchors = [
-    [(3, 4), (4, 8), (7, 6)], 
-    [(7, 12), (14, 9), (11, 18)], 
-    [(25, 14), (21, 27), (44, 35)]
-]
 anchors = [
     [(12, 16), (19, 36), (40, 28)],  # P3/8
     [(36, 75), (76, 55), (72, 146)],  # P4/16
     [(142, 110), (192, 243), (459, 401)]  # P5/32
 ]
-
-# anchors = DE_anchors # 修改anchor
-
 # -----train val related-----
 # Base learning rate for optim_wrapper. Corresponding to 8xb16=128 bs
 base_lr = 0.01
@@ -322,14 +288,6 @@ optim_wrapper = dict(
         nesterov=True,
         batch_size_per_gpu=train_batch_size_per_gpu),
     constructor='YOLOv7OptimWrapperConstructor')
-
-# SGD -> AdamW
-# optim_wrapper = dict(
-#     # _delete_=True,
-#     type='OptimWrapper',
-#     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
-#     paramwise_cfg=dict(
-#         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(
     param_scheduler=dict(
