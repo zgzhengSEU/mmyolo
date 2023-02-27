@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["p2","autoAdamW"]
+TAGS = ["p2","autoAdamW","CBAM1234"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_p2_CBAM1234_autoAdamW_4090"
+ALGO_NAME = "yolov7_tiny_p2_CBAM1234_autoAdamW_A5000"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
