@@ -9,8 +9,10 @@ from .yolov8_pafpn import YOLOv8PAFPN
 from .yolox_pafpn import YOLOXPAFPN
 from .bifpn import BiFPN
 from .bifpn4 import BiFPN4
+from .asff import ASFFNeck
+from .asff4 import ASFFNeck4
 __all__ = [
     'YOLOv5PAFPN', 'BaseYOLONeck', 'YOLOv6RepPAFPN', 'YOLOXPAFPN',
     'CSPNeXtPAFPN', 'YOLOv7PAFPN', 'PPYOLOECSPPAFPN', 'YOLOv6CSPRepPAFPN',
-    'YOLOv8PAFPN', 'BiFPN', 'BiFPN4'
+    'YOLOv8PAFPN', 'BiFPN', 'BiFPN4', 'ASFFNeck', 'ASFFNeck4'
 ]
