@@ -28,7 +28,7 @@ num_last_epochs = 15  # Last epoch number to switch training pipeline
 
 
 ######## batchsize
-train_batch_size_per_gpu = 16
+train_batch_size_per_gpu = 8
 train_dataloader = dict(
     batch_size=train_batch_size_per_gpu)
 
