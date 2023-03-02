@@ -11,6 +11,9 @@ train_data_prefix = 'images/train/'  # Prefix of train image path
 # Path of val annotation file
 val_ann_file = 'annotations/val.json'
 val_data_prefix = 'images/val/'  # Prefix of val image path
+# Path of test annotatino file
+test_ann_file = 'annotations/test.json'
+test_data_prefix = 'images/test/'  # Prefix of val image path
 
 num_classes = 10  # Number of classes for classification
 # Batch size of a single GPU during training
@@ -275,7 +278,23 @@ val_dataloader = dict(
         pipeline=test_pipeline,
         batch_shapes_cfg=batch_shapes_cfg))
 
-test_dataloader = val_dataloader
+test_dataloader = dict(
+    batch_size=val_batch_size_per_gpu,
+    num_workers=val_num_workers,
+    persistent_workers=persistent_workers,
+    pin_memory=True,
+    drop_last=False,
+    sampler=dict(type='DefaultSampler', shuffle=False),
+    dataset=dict(
+        type=dataset_type,
+        data_root=data_root,
+        metainfo=METAINFO,
+        test_mode=True,
+        data_prefix=dict(img=test_data_prefix),
+        ann_file=test_ann_file,
+        pipeline=test_pipeline,
+        batch_shapes_cfg=batch_shapes_cfg))
+
 
 param_scheduler = None
 optim_wrapper = dict(
@@ -317,7 +336,11 @@ val_evaluator = dict(
     proposal_nums=(100, 1, 10),  # Can be accelerated
     ann_file=data_root + val_ann_file,
     metric='bbox')
-test_evaluator = val_evaluator
+test_evaluator = dict(
+    type='mmdet.CocoMetric',
+    proposal_nums=(100, 1, 10),  # Can be accelerated
+    ann_file=data_root + test_ann_file,
+    metric='bbox')
 
 train_cfg = dict(
     type='EpochBasedTrainLoop',
