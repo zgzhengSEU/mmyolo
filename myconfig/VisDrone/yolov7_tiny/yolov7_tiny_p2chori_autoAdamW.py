@@ -48,7 +48,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 32
+train_batch_size_per_gpu = 128
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -84,7 +84,7 @@ model = dict(
     neck=dict(
         is_tiny_version=True,
         in_channels=[64, 128, 256, 512],
-        out_channels=[64, 128, 256, 512],
+        out_channels=[32, 64, 128, 256],
         block_cfg=dict(
             _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
@@ -92,7 +92,7 @@ model = dict(
     bbox_head=dict(
         head_module=dict(
             type='YOLOv7p6HeadModule',
-            in_channels=[64, 128, 256, 512],
+            in_channels=[32, 64, 128, 256],
             main_out_channels = [64, 128, 256, 512],
             use_aux = False,
             featmap_strides=strides,
