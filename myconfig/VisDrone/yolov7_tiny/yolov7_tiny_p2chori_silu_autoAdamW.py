@@ -1,9 +1,10 @@
 _base_ = './yolov7_l_origin.py'
 
+gpu_num = 1
 # ======================== wandb & run ==============================
 TAGS = ["p2","autoAdamW"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_p2chori_autoAdamW_H100"
+ALGO_NAME = "yolov7_tiny_p2chori_silu_autoAdamW_H100"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -48,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 128
+train_batch_size_per_gpu = 256
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -70,7 +71,7 @@ pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
         arch='Tiny', 
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4)),
     # backbone=dict(
     #     arch='Tiny', 
@@ -87,7 +88,7 @@ model = dict(
         out_channels=[32, 64, 128, 256],
         block_cfg=dict(
             _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(
@@ -163,28 +164,30 @@ train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
 
-base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
+base_lr = (train_batch_size_per_gpu * gpu_num / 128) * _base_.base_lr
 # base_lr = _base_.base_lr
 weight_decay = _base_.weight_decay
 
-optim_wrapper = dict(
-    type='OptimWrapper',
-    optimizer=dict(
-        type='SGD',
-        lr=base_lr,
-        momentum=0.937,
-        weight_decay=weight_decay,
-        nesterov=True,
-        batch_size_per_gpu=train_batch_size_per_gpu),
-    constructor='YOLOv7OptimWrapperConstructor')
+# optim_wrapper = dict(
+#     type='OptimWrapper',
+#     optimizer=dict(
+#         type='SGD',
+#         lr=base_lr,
+#         momentum=0.937,
+#         weight_decay=weight_decay,
+#         nesterov=True,
+#         batch_size_per_gpu=train_batch_size_per_gpu),
+#     constructor='YOLOv7OptimWrapperConstructor')
 
 # SGD -> AdamW
-# optim_wrapper = dict(
-#     _delete_=True,
-#     type='OptimWrapper',
-#     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
-#     paramwise_cfg=dict(
-#         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
+
+base_lr = (train_batch_size_per_gpu * gpu_num / 256) * 0.004
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
