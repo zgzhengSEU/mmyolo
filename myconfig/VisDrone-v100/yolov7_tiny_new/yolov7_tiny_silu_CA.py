@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["yolov7_tiny","silu"]
+TAGS = ["yolov7_tiny","silu","CA"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_silu"
+ALGO_NAME = "yolov7_tiny_silu_CA"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -65,7 +65,12 @@ model = dict(
     backbone=dict(
         arch='Tiny', 
         # act_cfg=dict(type='LeakyReLU', negative_slope=0.1)
-        act_cfg=dict(type='SiLU', inplace=True)),
+        act_cfg=dict(type='SiLU', inplace=True),
+        plugins=[
+            dict(
+                cfg=dict(type='CoordAttention'),
+                stages=(True, True, True, True))
+        ]),
     neck=dict(
         is_tiny_version=True,
         in_channels=[128, 256, 512],
