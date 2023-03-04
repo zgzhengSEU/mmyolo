@@ -2,7 +2,7 @@ _base_ = './yolov7_l_origin.py'
 
 gpu_num = 1
 # ======================== wandb & run ==============================
-TAGS = ["p2","autoAdamW"]
+TAGS = ["p2","autoAdamW","SIOU","silu","ASFFsim"]
 GROUP_NAME = "yolov7_tiny"
 ALGO_NAME = "yolov7_tiny_p2chori_silu_SIOU_ASFFsim_autoAdamW"
 DATASET_NAME = "VisDrone"
@@ -111,7 +111,9 @@ model = dict(
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
         loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
-        loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
+        loss_bbox=dict(
+            iou_mode='siou',
+            loss_weight=loss_bbox_weight * (3 / num_det_layers)),
         loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [
