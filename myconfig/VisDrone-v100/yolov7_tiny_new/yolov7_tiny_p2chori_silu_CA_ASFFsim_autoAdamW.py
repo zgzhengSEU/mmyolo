@@ -4,13 +4,10 @@ gpu_num = 1
 # ======================== wandb & run ==============================
 TAGS = ["p2","autoAdamW"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_p2chori_silu_ASFFsim_autoAdamW"
+ALGO_NAME = "yolov7_tiny_p2chori_silu_CA_ASFFsim_autoAdamW"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
-    resume="allow",
-    id="fyhtvw5m",
-    allow_val_change=True,
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,
@@ -75,7 +72,12 @@ model = dict(
     backbone=dict(
         arch='Tiny', 
         # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        out_indices=(1, 2, 3, 4)),
+        out_indices=(1, 2, 3, 4),
+        plugins=[
+            dict(
+                cfg=dict(type='CoordAttention'),
+                stages=(True, True, True, True))
+        ]),
     # backbone=dict(
     #     arch='Tiny', 
     #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),

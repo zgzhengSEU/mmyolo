@@ -8,6 +8,9 @@ ALGO_NAME = "yolov7_tiny_p2chori_silu_autoAdamW"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
+    resume="allow",
+    id="ysccs53r",
+    allow_val_change=True,
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,

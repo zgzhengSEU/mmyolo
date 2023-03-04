@@ -4,13 +4,10 @@ gpu_num = 1
 # ======================== wandb & run ==============================
 TAGS = ["p2","autoAdamW"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_p2chori_silu_ASFFsim_autoAdamW"
+ALGO_NAME = "yolov7_tiny_p2chori_silu_SIOU_ASFFsim_autoAdamW"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
-    resume="allow",
-    id="fyhtvw5m",
-    allow_val_change=True,
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,

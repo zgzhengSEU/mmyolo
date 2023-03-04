@@ -29,13 +29,12 @@ class h_swish(nn.Module):
 @MODELS.register_module()
 class CoordAttention(nn.Module):
     def __init__(self, 
-                 in_channels, 
-                 out_channels, 
+                 in_channels,  
                  reduction=32):
         super(CoordAttention, self).__init__()
         self.pool_h = nn.AdaptiveAvgPool2d((None, 1))
         self.pool_w = nn.AdaptiveAvgPool2d((1, None))
-
+        out_channels = in_channels
         mid_channels = max(8, in_channels // reduction)
 
         self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0)
