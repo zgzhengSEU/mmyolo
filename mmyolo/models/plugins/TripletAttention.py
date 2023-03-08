@@ -36,7 +36,7 @@ class AttentionGate(nn.Module):
 
 @MODELS.register_module()
 class TripletAttention(nn.Module):
-    def __init__(self, no_spatial=False):
+    def __init__(self, in_channels, no_spatial=False):
         super(TripletAttention, self).__init__()
         self.cw = AttentionGate()
         self.hc = AttentionGate()
