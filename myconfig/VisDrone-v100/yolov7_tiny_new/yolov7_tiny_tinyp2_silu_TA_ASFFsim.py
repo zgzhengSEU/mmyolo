@@ -12,7 +12,7 @@ Wandb_init_kwargs = dict(
     name=ALGO_NAME,
     tags=TAGS,
     resume="allow",
-    id = "uw5ph0nc",
+    #id = "uw5ph0nc",
     allow_val_change=True
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])

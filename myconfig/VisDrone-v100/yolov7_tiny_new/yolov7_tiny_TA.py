@@ -144,18 +144,27 @@ train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
 
-base_lr = _base_.base_lr
+base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
+# base_lr = _base_.base_lr
 weight_decay = _base_.weight_decay
 
+# optim_wrapper = dict(
+#     type='OptimWrapper',
+#     optimizer=dict(
+#         type='SGD',
+#         lr=base_lr,
+#         momentum=0.937,
+#         weight_decay=weight_decay,
+#         nesterov=True,
+#         batch_size_per_gpu=train_batch_size_per_gpu),
+#     constructor='YOLOv7OptimWrapperConstructor')
+
+# SGD -> AdamW
 optim_wrapper = dict(
+    _delete_=True,
     type='OptimWrapper',
-    optimizer=dict(
-        type='SGD',
-        lr=base_lr,
-        momentum=0.937,
-        weight_decay=weight_decay,
-        nesterov=True,
-        batch_size_per_gpu=train_batch_size_per_gpu),
-    constructor='YOLOv7OptimWrapperConstructor')
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
