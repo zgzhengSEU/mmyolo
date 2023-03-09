@@ -10,7 +10,10 @@ Wandb_init_kwargs = dict(
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,
-    tags=TAGS
+    tags=TAGS,
+    resume="allow",
+    id = "uw5ph0nc",
+    allow_val_change=True
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
@@ -101,7 +104,7 @@ model = dict(
             use_repconv_outs=False),
         dict(
             type='ASFFNeck4',
-            widen_factor=0.25,
+            widen_factor=0.5,
             use_att='ASFF_sim')],   
     bbox_head=dict(
         head_module=dict(

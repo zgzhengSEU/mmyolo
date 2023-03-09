@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["p2","autoAdamW", "silu", "TA", "ASFFsim", "SIOU"]
+TAGS = ["p2","autoAdamW", "ASFF"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_silu_TA_ASFFsim_SIOU"
+ALGO_NAME = "yolov7_tiny_tinyp2_ASFF"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -11,8 +11,8 @@ Wandb_init_kwargs = dict(
     group=GROUP_NAME,
     name=ALGO_NAME,
     tags=TAGS,
-    resume="allow",
-    id = "8pcooh1a",
+    resume='allow',
+    #id = "",
     allow_val_change=True
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
@@ -72,13 +72,8 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
-        plugins=[
-            dict(
-                cfg=dict(type='TripletAttention'),
-                stages=(True, True, True, True))
-        ],
         arch='Tiny', 
-        act_cfg=dict(type='SiLU', inplace=True),
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4)),
     # backbone=dict(
     #     arch='Tiny', 
@@ -88,7 +83,7 @@ model = dict(
     #         dict(
     #             cfg=dict(type='CBAM'),
     #             stages=(True, True, True, True))
-    #     ]), 
+    #     ]),    
     neck=[
         dict(
             type='YOLOv7PAFPN4',
@@ -100,12 +95,13 @@ model = dict(
             block_cfg=dict(
                 type='TinyDownSampleBlock', middle_ratio=0.25),
             # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-            act_cfg=dict(type='SiLU', inplace=True),
+            act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
             use_repconv_outs=False),
         dict(
             type='ASFFNeck4',
             widen_factor=0.5,
-            use_att='ASFF_sim')],   
+            use_carafe=False,
+            use_att='ASFFsim')],
     bbox_head=dict(
         head_module=dict(
             in_channels = [64, 128, 256, 512],
@@ -113,9 +109,7 @@ model = dict(
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
         loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
-        loss_bbox=dict(
-            iou_mode='siou',
-            loss_weight=loss_bbox_weight * (3 / num_det_layers)),
+        loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
         loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [

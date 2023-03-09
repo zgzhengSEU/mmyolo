@@ -2,7 +2,7 @@ from mmyolo.registry import MODELS
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-
+from mmcv.ops.carafe import CARAFEPack
 
 class SiLU(nn.Module):
     """export-friendly inplace version of nn.SiLU()"""
@@ -96,6 +96,7 @@ class ASFF(nn.Module):
                  asff_channel=2,
                  expand_kernel=3,
                  multiplier=1,
+                 use_carafe=False, 
                  act='silu'):
         """
         Args:
@@ -108,7 +109,7 @@ class ASFF(nn.Module):
         super(ASFF, self).__init__()
         self.level = level
         self.type = type
-
+        self.use_carafe=use_carafe
         self.dim = [
             int(1024 * multiplier),
             int(512 * multiplier),
@@ -131,6 +132,7 @@ class ASFF(nn.Module):
             elif level == 1:
                 self.compress_level_0 = Conv(
                     int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=2)
                 self.stride_level_2 = Conv(
                     int(256 * multiplier), self.inter_dim, 3, 2, act=act)
                 self.stride_level_3 = Conv(
@@ -138,20 +140,36 @@ class ASFF(nn.Module):
             elif level == 2:
                 self.compress_level_0 = Conv(
                     int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=4)
                 self.compress_level_1 = Conv(
                     int(512 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_1 = CARAFEPack(channels=self.inter_dim, scale_factor=2)
                 self.stride_level_3 = Conv(
                     int(128 * multiplier), self.inter_dim, 3, 2, act=act)
             elif level == 3:
                 self.compress_level_0 = Conv(
                     int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=8)
                 self.compress_level_1 = Conv(
                     int(512 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_1 = CARAFEPack(channels=self.inter_dim, scale_factor=4)
                 self.compress_level_2 = Conv(
                     int(256 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_2 = CARAFEPack(channels=self.inter_dim, scale_factor=2)
             else:
                 raise ValueError('Invalid level {}'.format(level))
-
+        else:
+            if level == 0:
+                pass
+            elif level == 1:
+                self.level_0_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=2)
+            elif level == 2:
+                self.level_0_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=4)
+                self.level_1_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=2)
+            else:
+                self.level_0_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=8)
+                self.level_1_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=4)
+                self.level_2_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=2)
         # add expand layer
         self.expand = Conv(
             self.inter_dim, self.inter_dim, expand_kernel, 1, act=act)
@@ -203,11 +221,14 @@ class ASFF(nn.Module):
         if self.type == 'ASFF':
             if self.level == 0:
                 level_0_resized = x_level_0
+                
                 level_1_resized = self.stride_level_1(x_level_1)
+                
                 level_2_downsampled_inter = F.max_pool2d(
                     x_level_2, 3, stride=2, padding=1)
                 level_2_resized = self.stride_level_2(
                     level_2_downsampled_inter)
+                
                 level_3_downsampled_inter = F.max_pool2d(
                     x_level_3, 3, stride=2, padding=1)
                 level_3_downsampled_inter = F.max_pool2d(
@@ -216,33 +237,54 @@ class ASFF(nn.Module):
                     level_3_downsampled_inter)
             elif self.level == 1:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                level_0_resized = F.interpolate(
-                    level_0_compressed, scale_factor=2, mode='nearest')
+                if self.use_carafe:
+                    level_0_resized = self.upsample_level_0(level_0_compressed)
+                else:
+                    level_0_resized = F.interpolate(level_0_compressed, scale_factor=2, mode='nearest')
+                    
                 level_1_resized = x_level_1
+                
                 level_2_resized = self.stride_level_2(x_level_2)
+                
                 level_3_downsampled_inter = F.max_pool2d(
                     x_level_3, 3, stride=2, padding=1)
                 level_3_resized = self.stride_level_3(
                     level_3_downsampled_inter)
             elif self.level == 2:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                level_0_resized = F.interpolate(
-                    level_0_compressed, scale_factor=4, mode='nearest')
-                x_level_1_compressed = self.compress_level_1(x_level_1)
-                level_1_resized = F.interpolate(
-                    x_level_1_compressed, scale_factor=2, mode='nearest')
+                if self.use_carafe:
+                    level_0_resized = self.upsample_level_0(level_0_compressed)
+                else:
+                    level_0_resized = F.interpolate(level_0_compressed, scale_factor=4, mode='nearest')
+                    
+                level_1_compressed = self.compress_level_1(x_level_1)
+                if self.use_carafe:
+                    level_1_resized = self.upsample_level_1(level_1_compressed)
+                else:
+                    level_1_resized = F.interpolate(level_1_compressed, scale_factor=2, mode='nearest')
+                    
                 level_2_resized = x_level_2
+                
                 level_3_resized = self.stride_level_3(x_level_3)
             elif self.level == 3:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                level_0_resized = F.interpolate(
-                    level_0_compressed, scale_factor=8, mode='nearest')
-                x_level_1_compressed = self.compress_level_1(x_level_1)
-                level_1_resized = F.interpolate(
-                    x_level_1_compressed, scale_factor=4, mode='nearest')
-                x_level_2_compressed = self.compress_level_2(x_level_2)
-                level_2_resized = F.interpolate(
-                    x_level_2_compressed, scale_factor=2, mode='nearest')
+                if self.use_carafe:
+                    level_0_resized = self.upsample_level_0(level_0_compressed)
+                else:
+                    level_0_resized = F.interpolate(level_0_compressed, scale_factor=8, mode='nearest')
+                    
+                level_1_compressed = self.compress_level_1(x_level_1)
+                if self.use_carafe:
+                    level_1_resized = self.upsample_level_1(level_1_compressed)
+                else:
+                    level_1_resized = F.interpolate(level_1_compressed, scale_factor=4, mode='nearest')
+                    
+                level_2_compressed = self.compress_level_2(x_level_2)
+                if self.use_carafe:
+                    level_2_resized = self.upsample_level_2(level_2_compressed)
+                else:
+                    level_2_resized = F.interpolate(level_2_compressed, scale_factor=2, mode='nearest')
+                    
                 level_3_resized = x_level_3
         else:
             """
@@ -270,8 +312,11 @@ class ASFF(nn.Module):
                 level_3_resized = self.expand_channel(
                     level_3_resized)  # 128,40,40 -> expand -> 512,20,20
             elif self.level == 1:  # 256,40,40
-                level_0_resized = F.interpolate(  # 512,20,20 -> up -> 512,40,40
-                    x_level_0, scale_factor=2, mode='nearest')
+                if self.use_carafe:
+                    level_0_resized = self.level_0_upsample(x_level_0)
+                else:
+                    level_0_resized = F.interpolate(  # 512,20,20 -> up -> 512,40,40
+                        x_level_0, scale_factor=2, mode='nearest')
                 level_0_resized = self.mean_channel(
                     level_0_resized)  # 512,40,40 -> mean -> 256,40,40
                 level_1_resized = x_level_1  # 256,40,40
@@ -284,12 +329,19 @@ class ASFF(nn.Module):
                 level_3_resized = F.max_pool2d(  # 256,80,80 -> 256,40,40
                     level_3_resized, 3, stride=2, padding=1)
             elif self.level == 2:  # 128,80,80
-                level_0_resized = F.interpolate(  # 512,20,20 -> up 4 -> 512,80,80
-                    x_level_0, scale_factor=4, mode='nearest')
+                if self.use_carafe:
+                    level_0_resized = self.level_0_upsample(x_level_0)
+                else:
+                    level_0_resized = F.interpolate(  # 512,20,20 -> up 4 -> 512,80,80
+                        x_level_0, scale_factor=4, mode='nearest')
                 level_0_resized = self.mean_channel(  # 512,80,80 -> 256,80,80 -> 128,80,80
                     self.mean_channel(level_0_resized))
-                level_1_resized = F.interpolate(  # 256,40,40 -> up 2 -> 256,80,80
-                    x_level_1, scale_factor=2, mode='nearest')
+                
+                if self.use_carafe:
+                    level_1_resized = self.level_1_upsample(x_level_1)
+                else:
+                    level_1_resized = F.interpolate(  # 256,40,40 -> up 2 -> 256,80,80
+                        x_level_1, scale_factor=2, mode='nearest')
                 level_1_resized = self.mean_channel(
                     level_1_resized)  # 256,80,80 -> 128,80,80
                 level_2_resized = x_level_2  # 128,80,80
@@ -298,20 +350,31 @@ class ASFF(nn.Module):
                 level_3_resized = self.mean_channel(
                     level_3_resized)  # 256,80,80 -> 128,80,80
             elif self.level == 3:  # 64,160,160
-                level_0_resized = F.interpolate(  # 512,20,20 -> up 8 -> 512,160,160
-                    x_level_0, scale_factor=8, mode='nearest')
+                if self.use_carafe:
+                    level_0_resized = self.level_0_upsample(x_level_0)
+                else:
+                    level_0_resized = F.interpolate(  # 512,20,20 -> up 8 -> 512,160,160
+                        x_level_0, scale_factor=8, mode='nearest')
                 level_0_resized = self.mean_channel(  # 512,160,160 -> 256,160,160 -> 128,160,160-> 64,160,160
                     self.mean_channel(self.mean_channel(level_0_resized)))
-                level_1_resized = F.interpolate(  # 256,40,40 -> up 4 -> 512,160,160
-                    x_level_1, scale_factor=4, mode='nearest')
+                if self.use_carafe:
+                    level_1_resized = self.level_1_upsample(x_level_1)
+                else:
+                    level_1_resized = F.interpolate(  # 256,40,40 -> up 4 -> 512,160,160
+                        x_level_1, scale_factor=4, mode='nearest')
                 level_1_resized = self.mean_channel(  # 512,160,160 -> 256,160,160 -> 128,160,160
                     self.mean_channel(level_1_resized))
-                level_2_resized = F.interpolate(  # 128,80,80 -> up 2 -> 128,160,160
-                    x_level_2, scale_factor=2, mode='nearest')
+                if self.use_carafe:
+                    level_2_resized = self.level_2_upsample(x_level_2)
+                else:
+                    level_2_resized = F.interpolate(  # 128,80,80 -> up 2 -> 128,160,160
+                        x_level_2, scale_factor=2, mode='nearest')
                 level_2_resized = self.mean_channel(
                     level_2_resized)  # 128,160,160 -> 64,160,160
                 level_3_resized = x_level_3
                 # 0       # 1      # 2
+        # print("self.weight_level_0: \n", self.weight_level_0)
+        # print("level_0_resized: \n", level_0_resized.shape)
         level_0_weight_v = self.weight_level_0(level_0_resized)  # 3,20,20
         level_1_weight_v = self.weight_level_1(level_1_resized)
         level_2_weight_v = self.weight_level_2(level_2_resized)
@@ -324,8 +387,10 @@ class ASFF(nn.Module):
         levels_weight = self.weight_levels(levels_weight_v)
         levels_weight = F.softmax(levels_weight, dim=1)
 
-        fused_out_reduced = level_0_resized * levels_weight[:, 0:1, :, :] + level_1_resized * levels_weight[:,
-                                                                                                            1:2, :, :] + level_2_resized * levels_weight[:, 2:3, :, :] + level_3_resized * levels_weight[:, 3:, :, :]
+        fused_out_reduced = level_0_resized * levels_weight[:, 0:1, :, :] + \
+                            level_1_resized * levels_weight[:, 1:2, :, :] + \
+                            level_2_resized * levels_weight[:, 2:3, :, :] + \
+                            level_3_resized * levels_weight[:, 3:, :, :]
         out = self.expand(fused_out_reduced)
 
         return out
@@ -333,7 +398,7 @@ class ASFF(nn.Module):
 
 @MODELS.register_module()
 class ASFFNeck4(nn.Module):
-    def __init__(self, widen_factor, use_att='ASFF', asff_channel=2, expand_kernel=3, act='silu'):
+    def __init__(self, widen_factor, use_att='ASFF', use_carafe=False, asff_channel=2, expand_kernel=3, act='silu'):
         super().__init__()
         self.asff_1 = ASFF(
             level=0,
@@ -341,6 +406,7 @@ class ASFFNeck4(nn.Module):
             asff_channel=asff_channel,
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
+            use_carafe=use_carafe,
             act=act,
         )
         self.asff_2 = ASFF(
@@ -349,6 +415,7 @@ class ASFFNeck4(nn.Module):
             asff_channel=asff_channel,
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
+            use_carafe=use_carafe,
             act=act,
         )
         self.asff_3 = ASFF(
@@ -357,6 +424,7 @@ class ASFFNeck4(nn.Module):
             asff_channel=asff_channel,
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
+            use_carafe=use_carafe,
             act=act,
         )
         self.asff_4 = ASFF(
@@ -365,6 +433,7 @@ class ASFFNeck4(nn.Module):
             asff_channel=asff_channel,
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
+            use_carafe=use_carafe,
             act=act,
         )
 
