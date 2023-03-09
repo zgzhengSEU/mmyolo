@@ -100,7 +100,7 @@ model = dict(
         dict(
             type='ASFFNeck4',
             widen_factor=0.5,
-            use_carafe=False,
+            use_carafe=True,
             use_att='ASFFsim')],
     bbox_head=dict(
         head_module=dict(

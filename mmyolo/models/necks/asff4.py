@@ -162,14 +162,14 @@ class ASFF(nn.Module):
             if level == 0:
                 pass
             elif level == 1:
-                self.level_0_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=2)
+                self.level_0_upsample = CARAFEPack(channels=self.dim[0], scale_factor=2)
             elif level == 2:
-                self.level_0_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=4)
-                self.level_1_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=2)
+                self.level_0_upsample = CARAFEPack(channels=self.dim[0], scale_factor=4)
+                self.level_1_upsample = CARAFEPack(channels=self.dim[1], scale_factor=2)
             else:
-                self.level_0_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=8)
-                self.level_1_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=4)
-                self.level_2_upsample = CARAFEPack(channels=self.inter_dim, scale_factor=2)
+                self.level_0_upsample = CARAFEPack(channels=self.dim[0], scale_factor=8)
+                self.level_1_upsample = CARAFEPack(channels=self.dim[1], scale_factor=4)
+                self.level_2_upsample = CARAFEPack(channels=self.dim[2], scale_factor=2)
         # add expand layer
         self.expand = Conv(
             self.inter_dim, self.inter_dim, expand_kernel, 1, act=act)
