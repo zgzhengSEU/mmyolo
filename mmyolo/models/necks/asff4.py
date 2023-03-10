@@ -224,66 +224,47 @@ class ASFF(nn.Module):
                 
                 level_1_resized = self.stride_level_1(x_level_1)
                 
-                level_2_downsampled_inter = F.max_pool2d(
-                    x_level_2, 3, stride=2, padding=1)
-                level_2_resized = self.stride_level_2(
-                    level_2_downsampled_inter)
+                level_2_downsampled_inter = F.max_pool2d(x_level_2, 3, stride=2, padding=1)
+                level_2_resized = self.stride_level_2(level_2_downsampled_inter)
                 
-                level_3_downsampled_inter = F.max_pool2d(
-                    x_level_3, 3, stride=2, padding=1)
-                level_3_downsampled_inter = F.max_pool2d(
-                    level_3_downsampled_inter, 3, stride=2, padding=1)
-                level_3_resized = self.stride_level_3(
-                    level_3_downsampled_inter)
+                level_3_downsampled_inter = F.max_pool2d(x_level_3, 3, stride=2, padding=1)
+                level_3_downsampled_inter = F.max_pool2d(level_3_downsampled_inter, 3, stride=2, padding=1)
+                level_3_resized = self.stride_level_3(level_3_downsampled_inter)
             elif self.level == 1:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                if self.use_carafe:
-                    level_0_resized = self.upsample_level_0(level_0_compressed)
-                else:
-                    level_0_resized = F.interpolate(level_0_compressed, scale_factor=2, mode='nearest')
+                if self.use_carafe: level_0_resized = self.upsample_level_0(level_0_compressed)
+                else: level_0_resized = F.interpolate(level_0_compressed, scale_factor=2, mode='nearest')
                     
                 level_1_resized = x_level_1
                 
                 level_2_resized = self.stride_level_2(x_level_2)
                 
-                level_3_downsampled_inter = F.max_pool2d(
-                    x_level_3, 3, stride=2, padding=1)
-                level_3_resized = self.stride_level_3(
-                    level_3_downsampled_inter)
+                level_3_downsampled_inter = F.max_pool2d(x_level_3, 3, stride=2, padding=1)
+                level_3_resized = self.stride_level_3(level_3_downsampled_inter)
             elif self.level == 2:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                if self.use_carafe:
-                    level_0_resized = self.upsample_level_0(level_0_compressed)
-                else:
-                    level_0_resized = F.interpolate(level_0_compressed, scale_factor=4, mode='nearest')
+                if self.use_carafe: level_0_resized = self.upsample_level_0(level_0_compressed)
+                else: level_0_resized = F.interpolate(level_0_compressed, scale_factor=4, mode='nearest')
                     
                 level_1_compressed = self.compress_level_1(x_level_1)
-                if self.use_carafe:
-                    level_1_resized = self.upsample_level_1(level_1_compressed)
-                else:
-                    level_1_resized = F.interpolate(level_1_compressed, scale_factor=2, mode='nearest')
+                if self.use_carafe: level_1_resized = self.upsample_level_1(level_1_compressed)
+                else: level_1_resized = F.interpolate(level_1_compressed, scale_factor=2, mode='nearest')
                     
                 level_2_resized = x_level_2
                 
                 level_3_resized = self.stride_level_3(x_level_3)
             elif self.level == 3:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                if self.use_carafe:
-                    level_0_resized = self.upsample_level_0(level_0_compressed)
-                else:
-                    level_0_resized = F.interpolate(level_0_compressed, scale_factor=8, mode='nearest')
+                if self.use_carafe: level_0_resized = self.upsample_level_0(level_0_compressed)
+                else: level_0_resized = F.interpolate(level_0_compressed, scale_factor=8, mode='nearest')
                     
                 level_1_compressed = self.compress_level_1(x_level_1)
-                if self.use_carafe:
-                    level_1_resized = self.upsample_level_1(level_1_compressed)
-                else:
-                    level_1_resized = F.interpolate(level_1_compressed, scale_factor=4, mode='nearest')
+                if self.use_carafe: level_1_resized = self.upsample_level_1(level_1_compressed)
+                else: level_1_resized = F.interpolate(level_1_compressed, scale_factor=4, mode='nearest')
                     
                 level_2_compressed = self.compress_level_2(x_level_2)
-                if self.use_carafe:
-                    level_2_resized = self.upsample_level_2(level_2_compressed)
-                else:
-                    level_2_resized = F.interpolate(level_2_compressed, scale_factor=2, mode='nearest')
+                if self.use_carafe: level_2_resized = self.upsample_level_2(level_2_compressed)
+                else: level_2_resized = F.interpolate(level_2_compressed, scale_factor=2, mode='nearest')
                     
                 level_3_resized = x_level_3
         else:
@@ -293,93 +274,63 @@ class ASFF(nn.Module):
             x_level_2 = x[0]  # min feature level [128,80,80]
             """
             # print("ASFFsim")
-            if self.level == 0:  # 512,20,20
-                level_0_resized = x_level_0  # 512,20,20 ch,h,w
-                # 256,40,40 -> expand -> 1024,20,20
-                level_1_resized = self.expand_channel(x_level_1)
-                # 1024,20,20 -> mean -> 512,20,20
-                level_1_resized = self.mean_channel(level_1_resized)
-                level_2_resized = self.expand_channel(
-                    x_level_2)  # 128,80,80 -> expand -> 512,40,40
-                level_2_resized = F.max_pool2d(  # 512,40,40 -> maxpool /2 -> 512,20,20
-                    level_2_resized, 3, stride=2, padding=1)
-                # 64,160,160 -> expand -> 256,80,80
-                level_3_resized = self.expand_channel(x_level_3)
-                level_3_resized = self.mean_channel(
-                    level_3_resized)  # 256,80,80 -> mean -> 128,80,80
-                level_3_resized = F.max_pool2d(  # 128,80,80 -> 128,40,40
-                    level_3_resized, 3, stride=2, padding=1)
-                level_3_resized = self.expand_channel(
-                    level_3_resized)  # 128,40,40 -> expand -> 512,20,20
-            elif self.level == 1:  # 256,40,40
-                if self.use_carafe:
-                    level_0_resized = self.level_0_upsample(x_level_0)
-                else:
-                    level_0_resized = F.interpolate(  # 512,20,20 -> up -> 512,40,40
-                        x_level_0, scale_factor=2, mode='nearest')
-                level_0_resized = self.mean_channel(
-                    level_0_resized)  # 512,40,40 -> mean -> 256,40,40
-                level_1_resized = x_level_1  # 256,40,40
-                level_2_resized = self.expand_channel(
-                    x_level_2)  # 128,80,80 -> expand -> 512,40,40
-                level_2_resized = self.mean_channel(
-                    level_2_resized)  # 512,40,40 -> mean -> 256,40,40
-                level_3_resized = self.expand_channel(
-                    x_level_3)  # 64,160,160 -> 256,80,80
-                level_3_resized = F.max_pool2d(  # 256,80,80 -> 256,40,40
-                    level_3_resized, 3, stride=2, padding=1)
-            elif self.level == 2:  # 128,80,80
-                if self.use_carafe:
-                    level_0_resized = self.level_0_upsample(x_level_0)
-                else:
-                    level_0_resized = F.interpolate(  # 512,20,20 -> up 4 -> 512,80,80
-                        x_level_0, scale_factor=4, mode='nearest')
-                level_0_resized = self.mean_channel(  # 512,80,80 -> 256,80,80 -> 128,80,80
-                    self.mean_channel(level_0_resized))
+            if self.level == 0:
+                level_0_resized = x_level_0  
                 
-                if self.use_carafe:
-                    level_1_resized = self.level_1_upsample(x_level_1)
-                else:
-                    level_1_resized = F.interpolate(  # 256,40,40 -> up 2 -> 256,80,80
-                        x_level_1, scale_factor=2, mode='nearest')
-                level_1_resized = self.mean_channel(
-                    level_1_resized)  # 256,80,80 -> 128,80,80
-                level_2_resized = x_level_2  # 128,80,80
-                level_3_resized = self.expand_channel(
-                    x_level_3)  # 64,160,160 -> 256,80,80
-                level_3_resized = self.mean_channel(
-                    level_3_resized)  # 256,80,80 -> 128,80,80
-            elif self.level == 3:  # 64,160,160
-                if self.use_carafe:
-                    level_0_resized = self.level_0_upsample(x_level_0)
-                else:
-                    level_0_resized = F.interpolate(  # 512,20,20 -> up 8 -> 512,160,160
-                        x_level_0, scale_factor=8, mode='nearest')
-                level_0_resized = self.mean_channel(  # 512,160,160 -> 256,160,160 -> 128,160,160-> 64,160,160
-                    self.mean_channel(self.mean_channel(level_0_resized)))
-                if self.use_carafe:
-                    level_1_resized = self.level_1_upsample(x_level_1)
-                else:
-                    level_1_resized = F.interpolate(  # 256,40,40 -> up 4 -> 512,160,160
-                        x_level_1, scale_factor=4, mode='nearest')
-                level_1_resized = self.mean_channel(  # 512,160,160 -> 256,160,160 -> 128,160,160
-                    self.mean_channel(level_1_resized))
-                if self.use_carafe:
-                    level_2_resized = self.level_2_upsample(x_level_2)
-                else:
-                    level_2_resized = F.interpolate(  # 128,80,80 -> up 2 -> 128,160,160
-                        x_level_2, scale_factor=2, mode='nearest')
-                level_2_resized = self.mean_channel(
-                    level_2_resized)  # 128,160,160 -> 64,160,160
+                level_1_resized = self.expand_channel(x_level_1)
+                level_1_resized = self.mean_channel(level_1_resized)
+                
+                level_2_resized = self.expand_channel(x_level_2)  
+                level_2_resized = F.max_pool2d(level_2_resized, 3, stride=2, padding=1)
+
+                level_3_resized = self.expand_channel(x_level_3)
+                level_3_resized = self.mean_channel(level_3_resized) 
+                level_3_resized = F.max_pool2d(level_3_resized, 3, stride=2, padding=1)
+                level_3_resized = self.expand_channel(level_3_resized) 
+            elif self.level == 1: 
+                if self.use_carafe: level_0_resized = self.level_0_upsample(x_level_0)
+                else: level_0_resized = F.interpolate(x_level_0, scale_factor=2, mode='nearest')
+                level_0_resized = self.mean_channel(level_0_resized) 
+                
+                level_1_resized = x_level_1
+                
+                level_2_resized = self.expand_channel(x_level_2)
+                level_2_resized = self.mean_channel(level_2_resized)
+                
+                level_3_resized = self.expand_channel(x_level_3)
+                level_3_resized = F.max_pool2d(level_3_resized, 3, stride=2, padding=1)
+            elif self.level == 2:
+                if self.use_carafe: level_0_resized = self.level_0_upsample(x_level_0)
+                else: level_0_resized = F.interpolate(x_level_0, scale_factor=4, mode='nearest')
+                level_0_resized = self.mean_channel(self.mean_channel(level_0_resized))
+                
+                if self.use_carafe: level_1_resized = self.level_1_upsample(x_level_1)
+                else: level_1_resized = F.interpolate(x_level_1, scale_factor=2, mode='nearest')
+                level_1_resized = self.mean_channel(level_1_resized)
+                
+                level_2_resized = x_level_2
+                
+                level_3_resized = self.expand_channel(x_level_3)
+                level_3_resized = self.mean_channel(level_3_resized)
+            elif self.level == 3:
+                if self.use_carafe:level_0_resized = self.level_0_upsample(x_level_0)
+                else:level_0_resized = F.interpolate(x_level_0, scale_factor=8, mode='nearest')
+                level_0_resized = self.mean_channel(self.mean_channel(self.mean_channel(level_0_resized)))
+                
+                if self.use_carafe: level_1_resized = self.level_1_upsample(x_level_1)
+                else: level_1_resized = F.interpolate(x_level_1, scale_factor=4, mode='nearest')
+                level_1_resized = self.mean_channel(self.mean_channel(level_1_resized))
+                
+                if self.use_carafe: level_2_resized = self.level_2_upsample(x_level_2)
+                else: level_2_resized = F.interpolate(x_level_2, scale_factor=2, mode='nearest')
+                level_2_resized = self.mean_channel(level_2_resized)
+                
                 level_3_resized = x_level_3
-                # 0       # 1      # 2
-        # print("self.weight_level_0: \n", self.weight_level_0)
-        # print("level_0_resized: \n", level_0_resized.shape)
+                
+
         level_0_weight_v = self.weight_level_0(level_0_resized)  # 3,20,20
         level_1_weight_v = self.weight_level_1(level_1_resized)
         level_2_weight_v = self.weight_level_2(level_2_resized)
-        # print(level_3_resized.shape)
-        # print(self.weight_level_3)
         level_3_weight_v = self.weight_level_3(level_3_resized)
 
         levels_weight_v = torch.cat(
