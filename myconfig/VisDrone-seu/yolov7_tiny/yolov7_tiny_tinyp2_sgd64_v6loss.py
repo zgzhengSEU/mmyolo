@@ -49,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 64
+train_batch_size_per_gpu = 1
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
