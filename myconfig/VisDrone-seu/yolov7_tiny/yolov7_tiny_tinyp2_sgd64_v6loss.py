@@ -106,7 +106,27 @@ model = dict(
             bbox_format='xyxy',
             reduction='mean',
             loss_weight=2.5,
-            return_iou=False)))
+            return_iou=False)),
+    train_cfg=dict(
+        initial_epoch=4,
+        initial_assigner=dict(
+            type='BatchATSSAssigner',
+            num_classes=num_classes,
+            topk=9,
+            iou_calculator=dict(type='mmdet.BboxOverlaps2D')),
+        assigner=dict(
+            type='BatchTaskAlignedAssigner',
+            num_classes=num_classes,
+            topk=13,
+            alpha=1,
+            beta=6),
+    ),
+    test_cfg=dict(
+        multi_label=True,
+        nms_pre=30000,
+        score_thr=0.001,
+        nms=dict(type='nms', iou_threshold=0.65),
+        max_per_img=300))
 
 mosiac4_pipeline = [
     dict(
