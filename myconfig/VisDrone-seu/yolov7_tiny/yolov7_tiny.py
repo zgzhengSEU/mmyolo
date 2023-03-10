@@ -10,7 +10,8 @@ Wandb_init_kwargs = dict(
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,
-    tags=TAGS
+    tags=TAGS,
+    mode="offline"
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 

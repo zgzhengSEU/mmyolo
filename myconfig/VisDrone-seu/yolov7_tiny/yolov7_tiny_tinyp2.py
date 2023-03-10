@@ -3,14 +3,15 @@ _base_ = './yolov7_l_origin.py'
 # ======================== wandb & run ==============================
 TAGS = ["p2","autoAdamW"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2"
+ALGO_NAME = "yolov7_tiny_tinyp2_sgd64"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,
-    tags=TAGS
+    tags=TAGS,
+    mode="offline"
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
