@@ -1,7 +1,7 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["yolov7_tiny", "sgd64", "load"]
+TAGS = ["SEU", "load", "yolov7_tiny", "sgd64"]
 GROUP_NAME = "yolov7_tiny"
 ALGO_NAME = "yolov7_tiny_sgd64_load"
 DATASET_NAME = "VisDrone"

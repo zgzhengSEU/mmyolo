@@ -1,7 +1,7 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["tinyp2","sgd64", "ASFF"]
+TAGS = ["SEU", "load", "tinyp2","sgd64", "ASFF"]
 GROUP_NAME = "yolov7_tiny"
 ALGO_NAME = "yolov7_tiny_tinyp2_sgd64_ASFF"
 DATASET_NAME = "VisDrone"
@@ -19,7 +19,7 @@ import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
 
-# load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
+load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
 # ========================modified parameters========================
 num_det_layers = 4
 loss_bbox_weight = 0.05
@@ -107,7 +107,7 @@ model = dict(
         dict(
             type='ASFFNeck4',
             widen_factor=0.5,
-            use_caraf=False,
+            use_carafe=False,
             use_att='ASFF')],
     bbox_head=dict(
         head_module=dict(
