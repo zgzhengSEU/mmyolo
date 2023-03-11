@@ -122,6 +122,7 @@ runs
 runs/
 pip
 nohup.out
+output.*
 # Pytorch
 *.pth
 *.pt
