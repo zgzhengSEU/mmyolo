@@ -2,4 +2,5 @@
 from .cbam import CBAM
 from .coordattention import CoordAttention
 from .TripletAttention import TripletAttention
-__all__ = ['CBAM', 'CoordAttention', 'TripletAttention']
+from ShuffleAttention.py import ShuffleAttention
+__all__ = ['CBAM', 'CoordAttention', 'TripletAttention', 'ShuffleAttention']
