@@ -121,6 +121,7 @@ yolov5-6.1/
 runs
 runs/
 pip
+wandb/
 nohup.out
 ouput.*
 output.[0-9]*
