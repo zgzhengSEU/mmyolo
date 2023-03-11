@@ -5,7 +5,7 @@ from torch.nn.parameter import Parameter
 from mmyolo.registry import MODELS
 
 
-
+@MODELS.register_module()
 class ShuffleAttention(nn.Module):
     """Constructs a Channel Spatial Group module.
 
