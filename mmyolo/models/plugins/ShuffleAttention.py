@@ -1,8 +1,11 @@
 import torch
 import torch.nn as nn
+from torch.nn import init
 from torch.nn.parameter import Parameter
 
 from mmyolo.registry import MODELS
+
+
 
 
 @MODELS.register_module()
@@ -13,17 +16,33 @@ class ShuffleAttention(nn.Module):
         k_size: Adaptive selection of kernel size
     """
 
-    def __init__(self, channel, groups=16):
+    def __init__(self, 
+                 in_channels, 
+                 groups=8):
         super(ShuffleAttention, self).__init__()
         self.groups = groups
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.cweight = Parameter(torch.zeros(1, channel // (2 * groups), 1, 1))
-        self.cbias = Parameter(torch.ones(1, channel // (2 * groups), 1, 1))
-        self.sweight = Parameter(torch.zeros(1, channel // (2 * groups), 1, 1))
-        self.sbias = Parameter(torch.ones(1, channel // (2 * groups), 1, 1))
+        self.cweight = Parameter(torch.zeros(1, in_channels // (2 * groups), 1, 1))
+        self.cbias = Parameter(torch.ones(1, in_channels // (2 * groups), 1, 1))
+        self.sweight = Parameter(torch.zeros(1, in_channels // (2 * groups), 1, 1))
+        self.sbias = Parameter(torch.ones(1, in_channels // (2 * groups), 1, 1))
 
         self.sigmoid = nn.Sigmoid()
-        self.gn = nn.GroupNorm(channel // (2 * groups), channel // (2 * groups))
+        self.gn = nn.GroupNorm(in_channels // (2 * groups), in_channels // (2 * groups))
+        self.init_weights()
+        
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.zeros_(m.bias)
 
     @staticmethod
     def channel_shuffle(x, groups):
@@ -39,25 +58,33 @@ class ShuffleAttention(nn.Module):
 
     def forward(self, x):
         b, c, h, w = x.shape
-
-        x = x.reshape(b * self.groups, -1, h, w)
-        x_0, x_1 = x.chunk(2, dim=1)
+        
+        #group into subfeatures
+        x = x.reshape(b * self.groups, -1, h, w) # bs * groups, c // groups, h, w
+        #channel_split
+        x_0, x_1 = x.chunk(2, dim=1) # bs * groups, c // (2 * groups), h, w
 
         # channel attention
-        xn = self.avg_pool(x_0)
-        xn = self.cweight * xn + self.cbias
-        xn = x_0 * self.sigmoid(xn)
+        x_channel = self.avg_pool(x_0) # bs * groups, c // (2 * groups), 1, 1
+        x_channel = self.cweight * x_channel + self.cbias # bs * groups, c // (2 * groups), 1, 1
+        x_channel = x_0 * self.sigmoid(x_channel)
 
         # spatial attention
-        xs = self.gn(x_1)
-        xs = self.sweight * xs + self.sbias
-        xs = x_1 * self.sigmoid(xs)
+        x_spatial = self.gn(x_1) # bs * groups, c // (2 * groups), h, w
+        x_spatial = self.sweight * x_spatial + self.sbias # bs * groups, c // (2 * groups), h, w
+        x_spatial = x_1 * self.sigmoid(x_spatial) # bs * groups, c // (2 * groups), h, w
 
         # concatenate along channel axis
-        out = torch.cat([xn, xs], dim=1)
-        out = out.reshape(b, -1, h, w)
+        out = torch.cat([x_channel, x_spatial], dim=1) # bs * groups, c // groups, h, w
+        out = out.reshape(b, -1, h, w) # bs, c, h, w
 
         out = self.channel_shuffle(out, 2)
         return out
 
+if __name__ == '__main__':
+    input=torch.randn(50,512,7,7)
+    se = ShuffleAttention(channel=512,groups=8)
+    output=se(input)
+    print(output.shape)
 
+    

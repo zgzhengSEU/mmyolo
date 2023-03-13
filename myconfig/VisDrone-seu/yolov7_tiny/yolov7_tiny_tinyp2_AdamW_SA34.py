@@ -72,7 +72,7 @@ model = dict(
     backbone=dict(
         plugins=[
             dict(
-                cfg=dict(type='ShuffleAttention'),
+                cfg=dict(type='ShuffleAttention', groups=16),
                 stages=(False, False, True, True))
         ],
         arch='Tiny', 

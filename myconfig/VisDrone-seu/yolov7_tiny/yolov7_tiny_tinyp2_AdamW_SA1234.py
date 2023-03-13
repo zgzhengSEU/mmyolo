@@ -24,7 +24,7 @@ load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_
 num_det_layers = 4
 loss_bbox_weight = 0.05
 strides = [4, 8, 16, 32]  # Strides of multi-scale prior box
-norm_cfg = dict(type='BN', momentum=0.03, eps=0.001)
+norm_cfg = dict(type='BN', momentum=0.03, eps=0.001, groups=8)
 obj_level_weights=[4.0, 1.0, 0.25, 0.06]
 # -----model related-----
 # Basic size of multi-scale prior box
@@ -72,7 +72,7 @@ model = dict(
     backbone=dict(
         plugins=[
             dict(
-                cfg=dict(type='ShuffleAttention'),
+                cfg=dict(type='ShuffleAttention', groups=16),
                 stages=(True, True, True, True))
         ],
         arch='Tiny', 

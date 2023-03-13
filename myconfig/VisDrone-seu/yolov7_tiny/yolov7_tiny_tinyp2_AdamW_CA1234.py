@@ -72,7 +72,7 @@ model = dict(
     backbone=dict(
         plugins=[
             dict(
-                cfg=dict(type='CoordAttention'),
+                cfg=dict(type='CoordAttention', reduction=16),
                 stages=(True, True, True, True))
         ],
         arch='Tiny', 
