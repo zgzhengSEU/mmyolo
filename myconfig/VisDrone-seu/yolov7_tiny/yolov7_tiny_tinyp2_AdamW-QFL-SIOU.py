@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "VFL", "SIOU"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "QFL", "SIOU"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_VFL-SIOU"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_QFL-SIOU"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -100,20 +100,20 @@ model = dict(
         loss_cls=dict(
             _delete_=True,
             _scope_='mmdet',
-            type='VarifocalLoss',
+            type='QualityFocalLoss',
             loss_weight=1.0),
         loss_bbox=dict(
             _delete_=True,         
             type='IoULoss',
             iou_mode='siou',
-            bbox_format='xyxy',
+            bbox_format='xyxy',ou
             reduction='mean',
             loss_weight=2.5,
             return_iou=True),
         loss_obj=dict(            
             _delete_=True,
             _scope_='mmdet',
-            type='VarifocalLoss',
+            type='QualityFocalLoss',
             loss_weight=1.0)))
 
 mosiac4_pipeline = [
