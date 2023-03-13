@@ -204,3 +204,68 @@ optim_wrapper = dict(
 
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
+
+"""
++-----------------------------------------+----------------------+------------+--------------+
+| module                                  | #parameters or shape | #flops     | #activations |
++-----------------------------------------+----------------------+------------+--------------+
+| model                                   | 13.747M              | 13.828G    | 34.732M      |
+|  backbone                               |  2.464M              |  3.577G    |  14.131M     |
+|   backbone.stem                         |   19.488K            |   0.57G    |   4.915M     |
+|    backbone.stem.0                      |    0.928K            |    95.027M |    3.277M    |
+|    backbone.stem.1                      |    18.56K            |    0.475G  |    1.638M    |
+|   backbone.stage1.0                     |   31.104K            |   0.796G   |   4.915M     |
+|    backbone.stage1.0.short_conv         |    2.112K            |    54.067M |    0.819M    |
+|    backbone.stage1.0.main_convs         |    20.672K           |    0.529G  |    2.458M    |
+|    backbone.stage1.0.final_conv         |    8.32K             |    0.213G  |    1.638M    |
+|   backbone.stage2.1                     |   0.115M             |   0.739G   |   2.458M     |
+|    backbone.stage2.1.short_conv         |    4.224K            |    27.034M |    0.41M     |
+|    backbone.stage2.1.main_convs         |    78.208K           |    0.501G  |    1.229M    |
+|    backbone.stage2.1.final_conv         |    33.024K           |    0.211G  |    0.819M    |
+|   backbone.stage3.1                     |   0.46M              |   0.736G   |   1.229M     |
+|    backbone.stage3.1.short_conv         |    16.64K            |    26.624M |    0.205M    |
+|    backbone.stage3.1.main_convs         |    0.312M            |    0.499G  |    0.614M    |
+|    backbone.stage3.1.final_conv         |    0.132M            |    0.211G  |    0.41M     |
+|   backbone.stage4.1                     |   1.838M             |   0.735G   |   0.614M     |
+|    backbone.stage4.1.short_conv         |    66.048K           |    26.419M |    0.102M    |
+|    backbone.stage4.1.main_convs         |    1.247M            |    0.499G  |    0.307M    |
+|    backbone.stage4.1.final_conv         |    0.525M            |    0.21G   |    0.205M    |
+|  neck                                   |  11.238M             |  10.112G   |  19.07M      |
+|   neck.0                                |   3.619M             |   4.063G   |   12.442M    |
+|    neck.0.reduce_layers                 |    0.701M            |    0.423G  |    1.843M    |
+|    neck.0.upsample_layers               |    43.456K           |    41.472M |    0.358M    |
+|    neck.0.top_down_layers               |    0.184M            |    0.677G  |    4.301M    |
+|    neck.0.downsample_layers             |    0.388M            |    0.355G  |    0.717M    |
+|    neck.0.bottom_up_layers              |    0.734M            |    0.673G  |    2.15M     |
+|    neck.0.out_layers                    |    1.569M            |    1.894G  |    3.072M    |
+|   neck.1                                |   7.62M              |   6.049G   |   6.629M     |
+|    neck.1.asff_1                        |    4.432M            |    1.773G  |    0.824M    |
+|    neck.1.asff_2                        |    1.242M            |    1.71G   |    1.35M     |
+|    neck.1.asff_3                        |    0.627M            |    1.507G  |    1.971M    |
+|    neck.1.asff_4                        |    1.319M            |    1.059G  |    2.483M    |
+|  bbox_head.head_module.convs_pred       |  44.52K              |  0.138G    |  1.53M       |
+|   bbox_head.head_module.convs_pred.0    |   3.034K             |   73.728M  |   1.152M     |
+|    bbox_head.head_module.convs_pred.0.0 |    64                |    0       |    0         |
+|    bbox_head.head_module.convs_pred.0.1 |    2.925K            |    73.728M |    1.152M    |
+|    bbox_head.head_module.convs_pred.0.2 |    45                |    0       |    0         |
+|   bbox_head.head_module.convs_pred.1    |   5.978K             |   36.864M  |   0.288M     |
+|    bbox_head.head_module.convs_pred.1.0 |    0.128K            |    0       |    0         |
+|    bbox_head.head_module.convs_pred.1.1 |    5.805K            |    36.864M |    0.288M    |
+|    bbox_head.head_module.convs_pred.1.2 |    45                |    0       |    0         |
+|   bbox_head.head_module.convs_pred.2    |   11.866K            |   18.432M  |   72K        |
+|    bbox_head.head_module.convs_pred.2.0 |    0.256K            |    0       |    0         |
+|    bbox_head.head_module.convs_pred.2.1 |    11.565K           |    18.432M |    72K       |
+|    bbox_head.head_module.convs_pred.2.2 |    45                |    0       |    0         |
+|   bbox_head.head_module.convs_pred.3    |   23.642K            |   9.216M   |   18K        |
+|    bbox_head.head_module.convs_pred.3.0 |    0.512K            |    0       |    0         |
+|    bbox_head.head_module.convs_pred.3.1 |    23.085K           |    9.216M  |    18K       |
+|    bbox_head.head_module.convs_pred.3.2 |    45                |    0       |    0         |
++-----------------------------------------+----------------------+------------+--------------+
+
+
+==============================
+Input shape: torch.Size([640, 640])
+Model Flops: 13.828G
+Model Parameters: 13.747M
+==============================
+"""
