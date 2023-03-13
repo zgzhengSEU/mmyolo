@@ -1,25 +1,25 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["tinyp2","sgd64", "v6loss"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "VFL", "SIOU"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_sgd64_v6loss"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_VFL-SIOU"
 DATASET_NAME = "VisDrone"
 
-# Wandb_init_kwargs = dict(
-#     project=DATASET_NAME,
-#     group=GROUP_NAME,
-#     name=ALGO_NAME,
-#     tags=TAGS,
-#     mode="offline"
-# )
-# visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
+Wandb_init_kwargs = dict(
+    project=DATASET_NAME,
+    group=GROUP_NAME,
+    name=ALGO_NAME,
+    tags=TAGS,
+    mode="offline"
+)
+visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
 import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
 
-# load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
+load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
 # ========================modified parameters========================
 num_det_layers = 4
 loss_bbox_weight = 0.05
@@ -49,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 1
+train_batch_size_per_gpu = 64
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -92,45 +92,29 @@ model = dict(
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         use_repconv_outs=False),
     bbox_head=dict(
-        _delete_=True,
-        type='YOLOv6Head',
         head_module=dict(
-            type='YOLOv7HeadModule',
-            num_classes=num_classes,
-            in_channels=[64, 128, 256, 512],
-            featmap_strides=strides,
-            num_base_priors=1),
-        prior_generator = dict(
-            type='mmdet.MlvlPointGenerator',
-            offset=0.5,
-            strides=strides),
+            in_channels = [64, 128, 256, 512],
+            featmap_strides=strides),
+        prior_generator=dict(base_sizes=anchors, strides=strides),
+        obj_level_weights=obj_level_weights,
+        loss_cls=dict(
+            _delete_=True,
+            _scope_='mmdet',
+            type='VarifocalLoss',
+            loss_weight=1.0),
         loss_bbox=dict(
+            _delete_=True,         
             type='IoULoss',
             iou_mode='giou',
             bbox_format='xyxy',
             reduction='mean',
             loss_weight=2.5,
-            return_iou=True)),
-    train_cfg=dict(
-        initial_epoch=4,
-        initial_assigner=dict(
-            type='BatchATSSAssigner',
-            num_classes=num_classes,
-            topk=9,
-            iou_calculator=dict(type='mmdet.BboxOverlaps2D')),
-        assigner=dict(
-            type='BatchTaskAlignedAssigner',
-            num_classes=num_classes,
-            topk=13,
-            alpha=1,
-            beta=6),
-    ),
-    test_cfg=dict(
-        multi_label=True,
-        nms_pre=30000,
-        score_thr=0.001,
-        nms=dict(type='nms', iou_threshold=0.65),
-        max_per_img=300))
+            return_iou=True),
+        loss_obj=dict(            
+            _delete_=True,
+            _scope_='mmdet',
+            type='VarifocalLoss',
+            loss_weight=1.0)))
 
 mosiac4_pipeline = [
     dict(
@@ -195,24 +179,31 @@ base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
 # base_lr = _base_.base_lr
 weight_decay = _base_.weight_decay
 
-optim_wrapper = dict(
-    type='OptimWrapper',
-    optimizer=dict(
-        type='SGD',
-        lr=base_lr,
-        momentum=0.937,
-        weight_decay=weight_decay,
-        nesterov=True,
-        batch_size_per_gpu=train_batch_size_per_gpu),
-    constructor='YOLOv7OptimWrapperConstructor')
+# optim_wrapper = dict(
+#     type='OptimWrapper',
+#     optimizer=dict(
+#         type='SGD',
+#         lr=base_lr,
+#         momentum=0.937,
+#         weight_decay=weight_decay,
+#         nesterov=True,
+#         batch_size_per_gpu=train_batch_size_per_gpu),
+#     constructor='YOLOv7OptimWrapperConstructor')
 
 # SGD -> AdamW
-# optim_wrapper = dict(
-#     _delete_=True,
-#     type='OptimWrapper',
-#     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
-#     paramwise_cfg=dict(
-#         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
+base_lr = 0.004
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
+
+
+"""
+
+
+"""

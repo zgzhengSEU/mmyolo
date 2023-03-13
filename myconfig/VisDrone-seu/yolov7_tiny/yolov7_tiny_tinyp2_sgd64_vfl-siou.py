@@ -1,19 +1,19 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["tinyp2","sgd64", "v6loss"]
+TAGS = ["tinyp2","sgd64", "loss"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_sgd64_v6loss"
+ALGO_NAME = "yolov7_tiny_tinyp2_sgd64_losstest"
 DATASET_NAME = "VisDrone"
 
-# Wandb_init_kwargs = dict(
-#     project=DATASET_NAME,
-#     group=GROUP_NAME,
-#     name=ALGO_NAME,
-#     tags=TAGS,
-#     mode="offline"
-# )
-# visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
+Wandb_init_kwargs = dict(
+    project=DATASET_NAME,
+    group=GROUP_NAME,
+    name=ALGO_NAME,
+    tags=TAGS,
+    mode="offline"
+)
+visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
 import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -49,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 1
+train_batch_size_per_gpu = 64
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -92,45 +92,29 @@ model = dict(
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         use_repconv_outs=False),
     bbox_head=dict(
-        _delete_=True,
-        type='YOLOv6Head',
         head_module=dict(
-            type='YOLOv7HeadModule',
-            num_classes=num_classes,
-            in_channels=[64, 128, 256, 512],
-            featmap_strides=strides,
-            num_base_priors=1),
-        prior_generator = dict(
-            type='mmdet.MlvlPointGenerator',
-            offset=0.5,
-            strides=strides),
+            in_channels = [64, 128, 256, 512],
+            featmap_strides=strides),
+        prior_generator=dict(base_sizes=anchors, strides=strides),
+        obj_level_weights=obj_level_weights,
+        loss_cls=dict(
+            _delete_=True,
+            _scope_='mmdet',
+            type='VarifocalLoss',
+            loss_weight=1.0),
         loss_bbox=dict(
+            _delete_=True,         
             type='IoULoss',
             iou_mode='giou',
             bbox_format='xyxy',
             reduction='mean',
             loss_weight=2.5,
-            return_iou=True)),
-    train_cfg=dict(
-        initial_epoch=4,
-        initial_assigner=dict(
-            type='BatchATSSAssigner',
-            num_classes=num_classes,
-            topk=9,
-            iou_calculator=dict(type='mmdet.BboxOverlaps2D')),
-        assigner=dict(
-            type='BatchTaskAlignedAssigner',
-            num_classes=num_classes,
-            topk=13,
-            alpha=1,
-            beta=6),
-    ),
-    test_cfg=dict(
-        multi_label=True,
-        nms_pre=30000,
-        score_thr=0.001,
-        nms=dict(type='nms', iou_threshold=0.65),
-        max_per_img=300))
+            return_iou=True),
+        loss_obj=dict(            
+            _delete_=True,
+            _scope_='mmdet',
+            type='VarifocalLoss',
+            loss_weight=1.0)))
 
 mosiac4_pipeline = [
     dict(
