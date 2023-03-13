@@ -33,3 +33,7 @@ bsub -J yolov7_tiny_tinyp2_AdamW_CASA1234 -q gpu_v100 -gpu "num=1:mode=exclusive
 bsub -J yolov7_tiny_tinyp2_sgd64x2 -q gpu_v100 -gpu "num=2:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yufei/220200817/.conda/envs/mmyolo/bin/python tools/dist_train.sh myconfig/VisDrone-seu/yolov7_tiny/yolov7_tiny_tinyp2_sgd64x2.py 2 --amp"
 
 bsub -J yolov7_tiny_tinyp2_sgd64x2_noload -q gpu_v100 -gpu "num=2:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yufei/220200817/.conda/envs/mmyolo/bin/python tools/dist_train.sh myconfig/VisDrone-seu/yolov7_tiny/yolov7_tiny_tinyp2_sgd64x2_noload.py 2 --amp"
+
+# ================
+
+bsub -J yolov7_tiny_tinyp2_sgd64x2_noload_CASA1234_ASFFsimCE -q gpu_v100 -gpu "num=2:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yufei/220200817/.conda/envs/mmyolo/bin/python tools/dist_train.sh myconfig/VisDrone-seu/yolov7_tiny/yolov7_tiny_tinyp2_sgd64x2_noload_CASA1234_ASFFsimCE 2 --amp"
