@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TA", "ASFFsimCE"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TA1234-SA1234_ASFFsimCE"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -70,27 +70,35 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
+        plugins=[
+            dict(
+                cfg=dict(type='TripletAttention'),
+                stages=(True, True, True, True)),
+            dict(
+                cfg=dict(type='ShuffleAttention', groups=16),
+                stages=(True, True, True, True))
+        ],
         arch='Tiny', 
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        out_indices=(1, 2, 3, 4)),
-    # backbone=dict(
-    #     arch='Tiny', 
-    #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-    #     out_indices=(1, 2, 3, 4),
-    #     plugins=[
-    #         dict(
-    #             cfg=dict(type='CBAM'),
-    #             stages=(True, True, True, True))
-    #     ]),    
-    neck=dict(
-        type='YOLOv7PAFPN4',
-        is_tiny_version=True,
-        in_channels=[64, 128, 256, 512],
-        out_channels=[32, 64, 128, 256],
-        block_cfg=dict(
-            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        use_repconv_outs=False),
+        out_indices=(1, 2, 3, 4)), 
+    neck=[
+        dict(
+            type='YOLOv7PAFPN4',
+            upsample_feats_cat_first=False,
+            norm_cfg=norm_cfg,
+            is_tiny_version=True,
+            in_channels=[64, 128, 256, 512],
+            out_channels=[32, 64, 128, 256], # 4 层时不会*2
+            block_cfg=dict(
+                type='TinyDownSampleBlock', middle_ratio=0.25),
+            act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+            # act_cfg=dict(type='SiLU', inplace=True),
+            use_repconv_outs=False),
+        dict(
+            type='ASFFNeck4',
+            widen_factor=0.5,
+            use_carafe=True,
+            use_att='ASFFsim')],
     bbox_head=dict(
         head_module=dict(
             in_channels = [64, 128, 256, 512],
@@ -187,33 +195,27 @@ optim_wrapper = dict(
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
 
-
 """
-
 +-----------------------------------------+----------------------+------------+--------------+
 | module                                  | #parameters or shape | #flops     | #activations |
 +-----------------------------------------+----------------------+------------+--------------+
-| model                                   | 6.128M               | 7.779G     | 28.103M      |
-|  backbone                               |  2.464M              |  3.577G    |  14.131M     |
+| model                                   | 6.129M               | 7.79G      | 28.219M      |
+|  backbone                               |  2.466M              |  3.589G    |  14.247M     |
 |   backbone.stem                         |   19.488K            |   0.57G    |   4.915M     |
 |    backbone.stem.0                      |    0.928K            |    95.027M |    3.277M    |
 |    backbone.stem.1                      |    18.56K            |    0.475G  |    1.638M    |
-|   backbone.stage1.0                     |   31.104K            |   0.796G   |   4.915M     |
-|    backbone.stage1.0.short_conv         |    2.112K            |    54.067M |    0.819M    |
-|    backbone.stage1.0.main_convs         |    20.672K           |    0.529G  |    2.458M    |
-|    backbone.stage1.0.final_conv         |    8.32K             |    0.213G  |    1.638M    |
-|   backbone.stage2.1                     |   0.115M             |   0.739G   |   2.458M     |
-|    backbone.stage2.1.short_conv         |    4.224K            |    27.034M |    0.41M     |
-|    backbone.stage2.1.main_convs         |    78.208K           |    0.501G  |    1.229M    |
-|    backbone.stage2.1.final_conv         |    33.024K           |    0.211G  |    0.819M    |
-|   backbone.stage3.1                     |   0.46M              |   0.736G   |   1.229M     |
-|    backbone.stage3.1.short_conv         |    16.64K            |    26.624M |    0.205M    |
-|    backbone.stage3.1.main_convs         |    0.312M            |    0.499G  |    0.614M    |
-|    backbone.stage3.1.final_conv         |    0.132M            |    0.211G  |    0.41M     |
-|   backbone.stage4.1                     |   1.838M             |   0.735G   |   0.614M     |
-|    backbone.stage4.1.short_conv         |    66.048K           |    26.419M |    0.102M    |
-|    backbone.stage4.1.main_convs         |    1.247M            |    0.499G  |    0.307M    |
-|    backbone.stage4.1.final_conv         |    0.525M            |    0.21G   |    0.205M    |
+|   backbone.stage1                       |   31.404K            |   0.801G   |   4.961M     |
+|    backbone.stage1.0                    |    31.104K           |    0.796G  |    4.915M    |
+|    backbone.stage1.1                    |    0.3K              |    4.608M  |    46.08K    |
+|   backbone.stage2                       |   0.116M             |   0.742G   |   2.484M     |
+|    backbone.stage2.1                    |    0.115M            |    0.739G  |    2.458M    |
+|    backbone.stage2.2                    |    0.3K              |    2.688M  |    26.88K    |
+|   backbone.stage3                       |   0.461M             |   0.739G   |   1.251M     |
+|    backbone.stage3.1                    |    0.46M             |    0.736G  |    1.229M    |
+|    backbone.stage3.2                    |    0.3K              |    2.208M  |    22.08K    |
+|   backbone.stage4                       |   1.838M             |   0.737G   |   0.635M     |
+|    backbone.stage4.1                    |    1.838M            |    0.735G  |    0.614M    |
+|    backbone.stage4.2                    |    0.3K              |    2.088M  |    20.88K    |
 |  neck                                   |  3.619M              |  4.063G    |  12.442M     |
 |   neck.reduce_layers                    |   0.701M             |   0.423G   |   1.843M     |
 |    neck.reduce_layers.0                 |    2.112K            |    54.067M |    0.819M    |
@@ -263,7 +265,7 @@ default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
 
 ==============================
 Input shape: torch.Size([640, 640])
-Model Flops: 7.779G
-Model Parameters: 6.128M
+Model Flops: 7.79G
+Model Parameters: 6.129M
 ==============================
 """
