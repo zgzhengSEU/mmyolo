@@ -101,20 +101,20 @@ model = dict(
             _delete_=True,
             _scope_='mmdet',
             type='QualityFocalLoss',
-            loss_weight=1.0),
+            loss_weight=0.01),
         loss_bbox=dict(
             _delete_=True,         
             type='IoULoss',
             iou_mode='siou',
             bbox_format='xyxy',
             reduction='mean',
-            loss_weight=2.5,
+            loss_weight=0.01,
             return_iou=True),
         loss_obj=dict(            
             _delete_=True,
             _scope_='mmdet',
             type='QualityFocalLoss',
-            loss_weight=1.0)))
+            loss_weight=1000.0)))
 
 mosiac4_pipeline = [
     dict(

@@ -6,7 +6,7 @@ from .rtmdet_rotated_head import (RTMDetRotatedHead,
                                   RTMDetRotatedSepBNHeadModule)
 from .yolov5_head import YOLOv5Head, YOLOv5HeadModule
 from .yolov6_head import YOLOv6Head, YOLOv6HeadModule
-from .yolov7_head import YOLOv7Head, YOLOv7HeadModule, YOLOv7p6HeadModule
+from .yolov7_head import YOLOv7Head, YOLOv7HeadModule, YOLOv7p6HeadModule, YOLOv7HeadModuleForYOLOv6
 from .yolov8_head import YOLOv8Head, YOLOv8HeadModule
 from .yolox_head import YOLOXHead, YOLOXHeadModule
 
@@ -16,5 +16,5 @@ __all__ = [
     'RTMDetSepBNHeadModule', 'YOLOv7Head', 'PPYOLOEHead', 'PPYOLOEHeadModule',
     'YOLOv7HeadModule', 'YOLOv7p6HeadModule', 'YOLOv8Head', 'YOLOv8HeadModule',
     'RTMDetRotatedHead', 'RTMDetRotatedSepBNHeadModule', 'RTMDetInsSepBNHead',
-    'RTMDetInsSepBNHeadModule'
+    'RTMDetInsSepBNHeadModule', 'YOLOv7HeadModuleForYOLOv6'
 ]

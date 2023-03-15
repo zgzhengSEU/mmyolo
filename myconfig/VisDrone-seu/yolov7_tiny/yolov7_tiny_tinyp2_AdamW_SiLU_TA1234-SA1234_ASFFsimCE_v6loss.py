@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "VFL", "SIOU"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "SIOU", "ASFFsim", "TA", "SA", "SiLU", "v6loss"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_VFL-SIOU"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_SiLU_TA1234-SA1234_ASFFsimCE_v6loss"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -49,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 128
+train_batch_size_per_gpu = 64
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -70,8 +70,16 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
+        plugins=[
+            dict(
+                cfg=dict(type='TripletAttention'),
+                stages=(True, True, True, True)),
+            dict(
+                cfg=dict(type='ShuffleAttention', groups=16),
+                stages=(True, True, True, True))
+        ],
         arch='Tiny', 
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4)),
     # backbone=dict(
     #     arch='Tiny', 
@@ -82,41 +90,64 @@ model = dict(
     #             cfg=dict(type='CBAM'),
     #             stages=(True, True, True, True))
     #     ]),    
-    neck=dict(
-        type='YOLOv7PAFPN4',
-        is_tiny_version=True,
-        in_channels=[64, 128, 256, 512],
-        out_channels=[32, 64, 128, 256],
-        block_cfg=dict(
-            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        use_repconv_outs=False),
+    neck=[
+        dict(
+            type='YOLOv7PAFPN4',
+            upsample_feats_cat_first=False,
+            norm_cfg=norm_cfg,
+            is_tiny_version=True,
+            in_channels=[64, 128, 256, 512],
+            out_channels=[32, 64, 128, 256], # 4 层时不会*2
+            block_cfg=dict(
+                type='TinyDownSampleBlock', middle_ratio=0.25),
+            # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+            act_cfg=dict(type='SiLU', inplace=True),
+            use_repconv_outs=False),
+        dict(
+            type='ASFFNeck4',
+            widen_factor=0.5,
+            use_carafe=True,
+            use_att='ASFFsim')],
     bbox_head=dict(
+        _delete_=True,
+        type='YOLOv6Head',
         head_module=dict(
-            in_channels = [64, 128, 256, 512],
-            featmap_strides=strides),
-        prior_generator=dict(base_sizes=anchors, strides=strides),
-        obj_level_weights=obj_level_weights,
-        loss_cls=dict(
-            _delete_=True,
-            _scope_='mmdet',
-            type='VarifocalLoss',
-            loss_weight=0.0037500000000000007),
+            type='YOLOv7HeadModuleForYOLOv6',
+            num_classes=num_classes,
+            in_channels=[64, 128, 256, 512],
+            featmap_strides=strides,
+            num_base_priors=1),
+        prior_generator = dict(
+            type='mmdet.MlvlPointGenerator',
+            offset=0.5,
+            strides=strides),
         loss_bbox=dict(
-            _delete_=True,         
             type='IoULoss',
-            iou_mode='ciou',
+            iou_mode='siou',
             bbox_format='xyxy',
             reduction='mean',
-            loss_weight=0.005,
-            return_iou=True),
-        # loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers)))
-        loss_obj=dict(            
-            _delete_=True,
-            _scope_='mmdet',
-            type='VarifocalLoss',
-            loss_weight=1000))
-    )
+            loss_weight=2.5,
+            return_iou=False)),
+    train_cfg=dict(
+        initial_epoch=4,
+        initial_assigner=dict(
+            type='BatchATSSAssigner',
+            num_classes=num_classes,
+            topk=9,
+            iou_calculator=dict(type='mmdet.BboxOverlaps2D')),
+        assigner=dict(
+            type='BatchTaskAlignedAssigner',
+            num_classes=num_classes,
+            topk=13,
+            alpha=1,
+            beta=6),
+    ),
+    test_cfg=dict(
+        multi_label=True,
+        nms_pre=30000,
+        score_thr=0.001,
+        nms=dict(type='nms', iou_threshold=0.65),
+        max_per_img=300))
 
 mosiac4_pipeline = [
     dict(

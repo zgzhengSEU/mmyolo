@@ -14,7 +14,7 @@ from mmyolo.utils import is_metainfo_lower
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
-    parser.add_argument('config', help='train config file path')
+    parser.add_argument('--config', default="myconfig/VisDrone-seu/yolov7_tiny/yolov7_tiny_tinyp2_sgd64_v6loss.py",help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
     parser.add_argument(
         '--amp',
@@ -86,15 +86,7 @@ def main():
                 f'`OptimWrapper` but got {optim_wrapper}.')
             cfg.optim_wrapper.type = 'AmpOptimWrapper'
             cfg.optim_wrapper.loss_scale = 'dynamic'
-        print_log(
-            'USE AMP training success!!!',
-            logger='current',
-            level=logging.WARNING)
-    else:
-        print_log(
-            'NOT USE AMP training',
-            logger='current',
-            level=logging.WARNING)
+
     # resume is determined in this priority: resume from > auto_resume
     if args.resume == 'auto':
         cfg.resume = True

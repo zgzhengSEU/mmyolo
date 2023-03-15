@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "QFL", "SIOU", "ASFFsim", "TA", "SA", "SiLU"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "SIOU", "ASFFsim", "TA", "SA", "SiLU", "v6loss"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_SiLU_TA1234-SA1234_ASFFsimCE_QFL-SIOU"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_SiLU_TA1234-SA1234g8_ASFFsimCE_v6loss"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -109,29 +109,45 @@ model = dict(
             use_carafe=True,
             use_att='ASFFsim')],
     bbox_head=dict(
+        _delete_=True,
+        type='YOLOv6Head',
         head_module=dict(
-            in_channels = [64, 128, 256, 512],
-            featmap_strides=strides),
-        prior_generator=dict(base_sizes=anchors, strides=strides),
-        obj_level_weights=obj_level_weights,
-        loss_cls=dict(
-            _delete_=True,
-            _scope_='mmdet',
-            type='VarifocalLoss',
-            loss_weight=1.0),
+            type='YOLOv7HeadModuleForYOLOv6',
+            num_classes=num_classes,
+            in_channels=[64, 128, 256, 512],
+            featmap_strides=strides,
+            num_base_priors=1),
+        prior_generator = dict(
+            type='mmdet.MlvlPointGenerator',
+            offset=0.5,
+            strides=strides),
         loss_bbox=dict(
-            _delete_=True,         
             type='IoULoss',
             iou_mode='siou',
             bbox_format='xyxy',
             reduction='mean',
             loss_weight=2.5,
-            return_iou=True),
-        loss_obj=dict(            
-            _delete_=True,
-            _scope_='mmdet',
-            type='VarifocalLoss',
-            loss_weight=1.0)))
+            return_iou=False)),
+    train_cfg=dict(
+        initial_epoch=4,
+        initial_assigner=dict(
+            type='BatchATSSAssigner',
+            num_classes=num_classes,
+            topk=9,
+            iou_calculator=dict(type='mmdet.BboxOverlaps2D')),
+        assigner=dict(
+            type='BatchTaskAlignedAssigner',
+            num_classes=num_classes,
+            topk=13,
+            alpha=1,
+            beta=6),
+    ),
+    test_cfg=dict(
+        multi_label=True,
+        nms_pre=30000,
+        score_thr=0.001,
+        nms=dict(type='nms', iou_threshold=0.65),
+        max_per_img=300))
 
 mosiac4_pipeline = [
     dict(
