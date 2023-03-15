@@ -86,7 +86,15 @@ def main():
                 f'`OptimWrapper` but got {optim_wrapper}.')
             cfg.optim_wrapper.type = 'AmpOptimWrapper'
             cfg.optim_wrapper.loss_scale = 'dynamic'
-
+        print_log(
+            'USE AMP training success!!!',
+            logger='current',
+            level=logging.WARNING)
+    else:
+        print_log(
+            'NOT USE AMP training',
+            logger='current',
+            level=logging.WARNING)
     # resume is determined in this priority: resume from > auto_resume
     if args.resume == 'auto':
         cfg.resume = True

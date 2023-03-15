@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "VFL", "SIOU"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "CASA", "SiLU"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_VFL-SIOU"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CA4r16-SA1234g8_SiLU"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -49,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 128
+train_batch_size_per_gpu = 64
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -70,18 +70,18 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
+        plugins=[
+            dict(
+                cfg=dict(type='CoordAttention', reduction=16),
+                stages=(False, False, False, True)),
+            dict(
+                cfg=dict(type='ShuffleAttention', groups=8),
+                stages=(True, True, True, True))
+        ],
         arch='Tiny', 
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        out_indices=(1, 2, 3, 4)),
-    # backbone=dict(
-    #     arch='Tiny', 
-    #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-    #     out_indices=(1, 2, 3, 4),
-    #     plugins=[
-    #         dict(
-    #             cfg=dict(type='CBAM'),
-    #             stages=(True, True, True, True))
-    #     ]),    
+        # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        act_cfg=dict(type='SiLU', inplace=True),
+        out_indices=(1, 2, 3, 4)), 
     neck=dict(
         type='YOLOv7PAFPN4',
         is_tiny_version=True,
@@ -89,7 +89,8 @@ model = dict(
         out_channels=[32, 64, 128, 256],
         block_cfg=dict(
             _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        act_cfg=dict(type='SiLU', inplace=True),
         use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(
@@ -97,26 +98,9 @@ model = dict(
             featmap_strides=strides),
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
-        loss_cls=dict(
-            _delete_=True,
-            _scope_='mmdet',
-            type='VarifocalLoss',
-            loss_weight=0.0037500000000000007),
-        loss_bbox=dict(
-            _delete_=True,         
-            type='IoULoss',
-            iou_mode='ciou',
-            bbox_format='xyxy',
-            reduction='mean',
-            loss_weight=0.005,
-            return_iou=True),
-        # loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers)))
-        loss_obj=dict(            
-            _delete_=True,
-            _scope_='mmdet',
-            type='VarifocalLoss',
-            loss_weight=1000))
-    )
+        loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
+        loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
+        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [
     dict(
@@ -203,9 +187,3 @@ optim_wrapper = dict(
 
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
-
-
-"""
-
-
-"""
