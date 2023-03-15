@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "CASA"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "CASA", "SIOU"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CASA4"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CA4r16-SA1234g8_SIOU"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -75,8 +75,8 @@ model = dict(
                 cfg=dict(type='CoordAttention', reduction=16),
                 stages=(False, False, False, True)),
             dict(
-                cfg=dict(type='ShuffleAttention', groups=16),
-                stages=(False, False, False, True))
+                cfg=dict(type='ShuffleAttention', groups=8),
+                stages=(True, True, True, True))
         ],
         arch='Tiny', 
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
@@ -97,7 +97,7 @@ model = dict(
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
         loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
-        loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
+        loss_bbox=dict(iou_mode='siou', loss_weight=loss_bbox_weight * (3 / num_det_layers)),
         loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [
