@@ -49,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 64
+train_batch_size_per_gpu = 128
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -101,20 +101,22 @@ model = dict(
             _delete_=True,
             _scope_='mmdet',
             type='VarifocalLoss',
-            loss_weight=1.0),
+            loss_weight=0.03),
         loss_bbox=dict(
             _delete_=True,         
             type='IoULoss',
             iou_mode='siou',
             bbox_format='xyxy',
             reduction='mean',
-            loss_weight=2.5,
+            loss_weight=0.01,
             return_iou=True),
-        loss_obj=dict(            
-            _delete_=True,
-            _scope_='mmdet',
-            type='VarifocalLoss',
-            loss_weight=1.0)))
+        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers)))
+        # loss_obj=dict(            
+        #     _delete_=True,
+        #     _scope_='mmdet',
+        #     type='VarifocalLoss',
+        #     loss_weight=10000))
+    )
 
 mosiac4_pipeline = [
     dict(

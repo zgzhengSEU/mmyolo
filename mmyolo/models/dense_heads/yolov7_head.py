@@ -402,3 +402,48 @@ class YOLOv7Head(YOLOv5Head):
         pred_wh = (bbox_pred[:, 2:] * 2)**2 * priors_base_sizes
         decoded_bbox_pred = torch.cat((pred_xy, pred_wh), dim=-1)
         return decoded_bbox_pred
+
+
+@MODELS.register_module()
+class YOLOv7HeadModuleForYOLOv6(YOLOv5HeadModule):
+    """YOLOv7Head head module used in YOLOv7."""
+
+    def _init_layers(self):
+        """initialize conv layers in YOLOv7 head."""
+        self.convs_pred = nn.ModuleList()
+        for i in range(self.num_levels):
+            conv_pred = nn.Sequential(
+                ImplicitA(self.in_channels[i]),
+                nn.Conv2d(self.in_channels[i],
+                          self.num_base_priors * self.num_out_attrib, 1),
+                ImplicitM(self.num_base_priors * self.num_out_attrib),
+            )
+            self.convs_pred.append(conv_pred)
+
+    def init_weights(self):
+        """Initialize the bias of YOLOv7 head."""
+        super(YOLOv5HeadModule, self).init_weights()
+        for mi, s in zip(self.convs_pred, self.featmap_strides):  # from
+            mi = mi[1]  # nn.Conv2d
+
+            b = mi.bias.data.view(self.num_base_priors, -1)
+            # obj (8 objects per 640 image)
+            b.data[:, 4] += math.log(8 / (640 / s)**2)
+            b.data[:, 5:] += math.log(0.6 / (self.num_classes - 0.99))
+
+            mi.bias.data = b.view(-1)
+
+    def forward_single(self, x: Tensor,
+                       convs: nn.Module) -> Tuple[Tensor, Tensor, Tensor]:
+        """Forward feature of a single scale level."""
+
+        pred_map = convs(x)
+        bs, _, ny, nx = pred_map.shape
+        pred_map = pred_map.view(bs, self.num_base_priors, self.num_out_attrib,
+                                 ny, nx)
+
+        cls_score = pred_map[:, :, 5:, ...].reshape(bs, -1, ny, nx)
+        bbox_pred = pred_map[:, :, :4, ...].reshape(bs, -1, ny, nx)
+        # objectness = pred_map[:, :, 4:5, ...].reshape(bs, -1, ny, nx)
+
+        return cls_score, bbox_pred
