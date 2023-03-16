@@ -284,9 +284,9 @@ class ASFF(nn.Module):
                 level_2_resized = F.max_pool2d(level_2_resized, 3, stride=2, padding=1)
 
                 level_3_resized = self.expand_channel(x_level_3)
-                level_3_resized = self.mean_channel(level_3_resized) 
                 level_3_resized = F.max_pool2d(level_3_resized, 3, stride=2, padding=1)
                 level_3_resized = self.expand_channel(level_3_resized) 
+                level_3_resized = self.mean_channel(level_3_resized)
             elif self.level == 1: 
                 if self.use_carafe: level_0_resized = self.level_0_upsample(x_level_0)
                 else: level_0_resized = F.interpolate(x_level_0, scale_factor=2, mode='nearest')
