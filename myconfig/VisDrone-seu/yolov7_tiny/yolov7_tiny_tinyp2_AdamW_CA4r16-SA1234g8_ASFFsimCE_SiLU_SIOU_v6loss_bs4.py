@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "SIOU", "ASFFsim", "TA", "SA", "SiLU", "v6loss"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "CASA", "ASFFsimCE", "SiLU", "SIOU", "v6loss"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_SiLU_TA1234-SA1234g8_ASFFsimCE_v6loss"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CA4r16-SA1234g8_ASFFsimCE_SiLU_SIOU_v6loss_bs4"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -72,24 +72,16 @@ model = dict(
     backbone=dict(
         plugins=[
             dict(
-                cfg=dict(type='TripletAttention'),
-                stages=(True, True, True, True)),
+                cfg=dict(type='CoordAttention', reduction=16),
+                stages=(False, False, False, True)),
             dict(
-                cfg=dict(type='ShuffleAttention', groups=16),
+                cfg=dict(type='ShuffleAttention', groups=8),
                 stages=(True, True, True, True))
         ],
         arch='Tiny', 
         # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        out_indices=(1, 2, 3, 4)),
-    # backbone=dict(
-    #     arch='Tiny', 
-    #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-    #     out_indices=(1, 2, 3, 4),
-    #     plugins=[
-    #         dict(
-    #             cfg=dict(type='CBAM'),
-    #             stages=(True, True, True, True))
-    #     ]),    
+        act_cfg=dict(type='SiLU', inplace=True),
+        out_indices=(1, 2, 3, 4)), 
     neck=[
         dict(
             type='YOLOv7PAFPN4',
@@ -232,11 +224,14 @@ optim_wrapper = dict(
     paramwise_cfg=dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
+max_epochs = 400
+save_epoch_intervals = _base_.save_epoch_intervals
+num_epoch_stage2 = _base_.num_epoch_stage2
+val_interval_stage2 = _base_.val_interval_stage2
+train_cfg = dict(
+    type='EpochBasedTrainLoop',
+    max_epochs=max_epochs,
+    val_interval=save_epoch_intervals,
+    dynamic_intervals=[(max_epochs - num_epoch_stage2, val_interval_stage2)])
 
-default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
-
-
-"""
-
-
-"""
+default_hooks = dict(param_scheduler=dict(max_epochs=max_epochs, lr_factor=lr_factor))
