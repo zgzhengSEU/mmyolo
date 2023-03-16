@@ -3,7 +3,7 @@ _base_ = './yolov7_l_origin.py'
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "tinyp2","AdamW", "CASA", "ASFFsimCE", "SiLU", "SIOU", "v6loss"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CA4r16-SA1234g8_ASFFsimCE_SiLU_SIOU_v6loss_bs4"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CA4r16-SA1234g8_ASFFsimCE_SiLU_SIOU_v6loss_bs2"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -49,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 4
+train_batch_size_per_gpu = 2
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
