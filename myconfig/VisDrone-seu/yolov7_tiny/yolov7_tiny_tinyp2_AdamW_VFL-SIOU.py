@@ -101,21 +101,22 @@ model = dict(
             _delete_=True,
             _scope_='mmdet',
             type='VarifocalLoss',
-            loss_weight=0.0037500000000000007),
+            alpha = 0.75,
+            gamma = 2.0,
+            loss_weight=1.0),
         loss_bbox=dict(
-            _delete_=True,         
             type='IoULoss',
             iou_mode='ciou',
-            bbox_format='xyxy',
+            bbox_format='xywh',
             reduction='mean',
-            loss_weight=0.005,
+            loss_weight=loss_bbox_weight * (3 / num_det_layers),
             return_iou=True),
-        # loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers)))
-        loss_obj=dict(            
-            _delete_=True,
-            _scope_='mmdet',
-            type='VarifocalLoss',
-            loss_weight=1000))
+        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers)))
+        # loss_obj=dict(            
+        #     _delete_=True,
+        #     _scope_='mmdet',
+        #     type='VarifocalLoss',
+        #     loss_weight=1000))
     )
 
 mosiac4_pipeline = [

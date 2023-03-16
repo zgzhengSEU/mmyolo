@@ -53,4 +53,21 @@ python ./projects/easydeploy/tools/export.py \
 	--score-threshold 0.25
 ```
 
+```shell
+python ./projects/easydeploy/tools/export.py \
+	runs/VisDrone/yolov7_tiny_tinyp2_AdamW_TA1234-SA1234_ASFFsimCE/20230316_005302/yolov7_tiny_tinyp2_AdamW_TA1234-SA1234_ASFFsimCE.py \
+	runs/VisDrone/yolov7_tiny_tinyp2_AdamW_TA1234-SA1234_ASFFsimCE/20230316_005302/epoch_2.pth \
+	--work-dir work_dir \
+    --img-size 640 640 \
+    --batch 32 \
+    --device cuda \
+    --simplify \
+	--opset 11 \
+	--backend 1 \
+	--pre-topk 1000 \
+	--keep-topk 100 \
+	--iou-threshold 0.65 \
+	--score-threshold 0.25
+```
+
 然后利用后端支持的工具如 `TensorRT` 读取 `onnx` 再次转换为后端支持的模型格式如 `.engine/.plan` 等
