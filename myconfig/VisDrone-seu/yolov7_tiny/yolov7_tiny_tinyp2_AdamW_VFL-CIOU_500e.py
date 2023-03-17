@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "VFL", "SIOU"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "VFL", "CIOU"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_VFL-SIOU"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_VFL-CIOU_500e"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -107,7 +107,7 @@ model = dict(
             loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
         loss_bbox=dict(
             type='IoULoss',
-            iou_mode='siou',
+            iou_mode='ciou',
             bbox_format='xywh',
             reduction='mean',
             # loss_bbox_weight = 0.05
@@ -206,7 +206,7 @@ optim_wrapper = dict(
     paramwise_cfg=dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
-max_epochs = 300
+max_epochs = 500
 save_epoch_intervals = _base_.save_epoch_intervals
 num_epoch_stage2 = _base_.num_epoch_stage2
 val_interval_stage2 = _base_.val_interval_stage2
@@ -215,7 +215,7 @@ train_cfg = dict(
     max_epochs=max_epochs,
     val_interval=save_epoch_intervals,
     dynamic_intervals=[(max_epochs - num_epoch_stage2, val_interval_stage2)])
-default_hooks = dict(max_epochs=max_epochs, param_scheduler=dict(lr_factor=lr_factor))
+default_hooks = dict(param_scheduler=dict(max_epochs=max_epochs, lr_factor=lr_factor))
 
 
 """
