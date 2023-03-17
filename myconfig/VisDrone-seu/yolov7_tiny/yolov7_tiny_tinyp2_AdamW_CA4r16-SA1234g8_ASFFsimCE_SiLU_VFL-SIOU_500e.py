@@ -224,4 +224,4 @@ train_cfg = dict(
     max_epochs=max_epochs,
     val_interval=save_epoch_intervals,
     dynamic_intervals=[(max_epochs - num_epoch_stage2, val_interval_stage2)])
-default_hooks = dict(max_epochs=max_epochs, param_scheduler=dict(lr_factor=lr_factor))
+default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor, max_epochs=max_epochs))
