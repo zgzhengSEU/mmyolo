@@ -8,7 +8,7 @@ from mmdet.utils import ConfigType, OptMultiConfig
 from mmyolo.registry import MODELS
 from ..layers import MaxPoolAndStrideConvBlock, RepVGGBlock, SPPFCSPBlock
 from .base_yolo_neck import BaseYOLONeck
-
+from mmcv.ops.carafe import CARAFEPack
 
 @MODELS.register_module()
 class YOLOv7PAFPN4(BaseYOLONeck):
@@ -60,6 +60,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                  use_maxpool_in_downsample: bool = True,
                  use_in_channels_in_downsample: bool = False,
                  use_repconv_outs: bool = True,
+                 use_carafe: bool = False,
                  upsample_feats_cat_first: bool = False,
                  freeze_all: bool = False,
                  norm_cfg: ConfigType = dict(
@@ -75,7 +76,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
         self.block_cfg = block_cfg
         self.block_cfg.setdefault('norm_cfg', norm_cfg)
         self.block_cfg.setdefault('act_cfg', act_cfg)
-
+        self.use_carafe = use_carafe
         super().__init__(
             in_channels=[
                 int(channel * widen_factor) for channel in in_channels
@@ -91,6 +92,13 @@ class YOLOv7PAFPN4(BaseYOLONeck):
             act_cfg=act_cfg,
             init_cfg=init_cfg)
 
+    def init_weights(self):
+        """Initialize the weights of module."""
+        super(YOLOv7PAFPN4, self).init_weights()
+        for m in self.modules():
+            if isinstance(m, CARAFEPack):
+                m.init_weights()
+                
     def build_reduce_layer(self, idx: int) -> nn.Module:
         """build reduce layer.
 
@@ -128,7 +136,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                 1,
                 norm_cfg=self.norm_cfg,
                 act_cfg=self.act_cfg),
-            nn.Upsample(scale_factor=2, mode='nearest'))
+            CARAFEPack(channels=self.out_channels[idx - 1], scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2, mode='nearest') )
 
     def build_top_down_layer(self, idx: int) -> nn.Module:
         """build top down layer.

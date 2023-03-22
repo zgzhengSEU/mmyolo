@@ -105,10 +105,10 @@ model = dict(
             # act_cfg=dict(type='SiLU', inplace=True),
             use_repconv_outs=False),
         dict(
-            type='ASFFNeck4',
+            type='TinyASFFNeck',
             widen_factor=0.5,
             use_carafe=True,
-            use_att='ASFFsim')],
+            use_att='TinyASFF')],
     bbox_head=dict(
         head_module=dict(
             in_channels = [64, 128, 256, 512],
