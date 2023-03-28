@@ -165,26 +165,17 @@ bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234 -q gpu_v100 -gpu "num=1:mode
 
 bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200858/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF.py --amp"
 
-# SCA 通用
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-4 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-4.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-34 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-34.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-234.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-1234.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-4 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-4.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-34 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-34.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-234.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-1234.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234.py --amp"
-
-bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF.py --amp"
+# SCA zzg
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-4 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-4.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-34 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-34.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-234.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-1234.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-4 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-4.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-34 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-34.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-234.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-1234.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF.py --amp"
 
 
 # ====
