@@ -117,3 +117,17 @@ class CBAM(BaseModule):
         out = self.channel_attention(x) * x
         out = self.spatial_attention(out) * out
         return out
+
+if __name__ == '__main__':
+    input=torch.randn(1,512,20,20)
+    reduce_ratio = 4
+    model = CBAM(in_channels=512, reduce_ratio=reduce_ratio)
+    output=model(input)
+    # print(output.shape)
+    from fvcore.nn import FlopCountAnalysis
+    from fvcore.nn import flop_count_table
+    from fvcore.nn import flop_count_str
+    flops = FlopCountAnalysis(model, input)
+    print(f'input shape: {input.shape}')
+    print(f'reduce: {reduce_ratio}')
+    print(flop_count_table(flops))

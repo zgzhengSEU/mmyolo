@@ -3,7 +3,9 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from mmcv.ops.carafe import CARAFEPack
-
+# from carafe import CARAFEPack
+import softpool_cuda
+from SoftPool import SoftPool2d
 
 class SiLU(nn.Module):
     """export-friendly inplace version of nn.SiLU()"""
@@ -98,6 +100,7 @@ class ASFF(nn.Module):
                  expand_kernel=3,
                  multiplier=1,
                  use_carafe=False,
+                 use_softpool=False,
                  act='silu'):
         """
         Args:
@@ -111,78 +114,68 @@ class ASFF(nn.Module):
         self.level = level
         self.type = type
         self.use_carafe = use_carafe
+        self.use_softpool = use_softpool
         self.dim = [
             int(1024 * multiplier),
             int(512 * multiplier),
             int(256 * multiplier),
             int(128 * multiplier)
         ]
-
         Conv = BaseConv
 
+        if self.type == 'ASFFL':
+            self.dim = [
+                int(1024 * multiplier),
+                int(1024 * multiplier),
+                int(512 * multiplier),
+                int(256 * multiplier)
+            ]
         self.inter_dim = self.dim[self.level]
 
         if self.type == 'ASFF':
             if level == 0:
-                self.stride_level_1 = Conv(
-                    int(512 * multiplier), self.inter_dim, 3, 2, act=act)
-                self.stride_level_2 = Conv(
-                    int(256 * multiplier), self.inter_dim, 3, 2, act=act)
-                self.stride_level_3 = Conv(
-                    int(128 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.stride_level_1 = Conv(int(512 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.stride_level_2 = Conv(int(256 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, act=act)
             elif level == 1:
-                self.compress_level_0 = Conv(
-                    int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
-                self.upsample_level_0 = CARAFEPack(
-                    channels=self.inter_dim, scale_factor=2)
-                self.stride_level_2 = Conv(
-                    int(256 * multiplier), self.inter_dim, 3, 2, act=act)
-                self.stride_level_3 = Conv(
-                    int(128 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
+                self.stride_level_2 = Conv(int(256 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, act=act)
             elif level == 2:
-                self.compress_level_0 = Conv(
-                    int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
-                self.upsample_level_0 = CARAFEPack(
-                    channels=self.inter_dim, scale_factor=4)
-                self.compress_level_1 = Conv(
-                    int(512 * multiplier), self.inter_dim, 1, 1, act=act)
-                self.upsample_level_1 = CARAFEPack(
-                    channels=self.inter_dim, scale_factor=2)
-                self.stride_level_3 = Conv(
-                    int(128 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=4) if self.use_carafe else nn.Upsample(scale_factor=4)
+                self.compress_level_1 = Conv(int(512 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_1 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
+                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, act=act)
             elif level == 3:
-                self.compress_level_0 = Conv(
-                    int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
-                self.upsample_level_0 = CARAFEPack(
-                    channels=self.inter_dim, scale_factor=8)
-                self.compress_level_1 = Conv(
-                    int(512 * multiplier), self.inter_dim, 1, 1, act=act)
-                self.upsample_level_1 = CARAFEPack(
-                    channels=self.inter_dim, scale_factor=4)
-                self.compress_level_2 = Conv(
-                    int(256 * multiplier), self.inter_dim, 1, 1, act=act)
-                self.upsample_level_2 = CARAFEPack(
-                    channels=self.inter_dim, scale_factor=2)
+                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=8) if self.use_carafe else nn.Upsample(scale_factor=8)
+                self.compress_level_1 = Conv(int(512 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_1 = CARAFEPack(channels=self.inter_dim, scale_factor=4) if self.use_carafe else nn.Upsample(scale_factor=4)
+                self.compress_level_2 = Conv(int(256 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_2 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
             else:
                 raise ValueError('Invalid level {}'.format(level))
         else:
             if level == 0:
                 pass
             elif level == 1:
-                self.level_0_upsample = CARAFEPack(
-                    channels=self.dim[0], scale_factor=2)
+                self.level_0_upsample = CARAFEPack(channels=self.dim[0], scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
             elif level == 2:
-                self.level_0_upsample = CARAFEPack(
-                    channels=self.dim[0], scale_factor=4)
-                self.level_1_upsample = CARAFEPack(
-                    channels=self.dim[1], scale_factor=2)
+                self.level_0_upsample = CARAFEPack(channels=self.dim[0], scale_factor=4) if self.use_carafe else nn.Upsample(scale_factor=4)
+                self.level_1_upsample = CARAFEPack(channels=self.dim[1], scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
             else:
-                self.level_0_upsample = CARAFEPack(
-                    channels=self.dim[0], scale_factor=8)
-                self.level_1_upsample = CARAFEPack(
-                    channels=self.dim[1], scale_factor=4)
-                self.level_2_upsample = CARAFEPack(
-                    channels=self.dim[2], scale_factor=2)
+                self.level_0_upsample = CARAFEPack(channels=self.dim[0], scale_factor=8) if self.use_carafe else nn.Upsample(scale_factor=8)
+                self.level_1_upsample = CARAFEPack(channels=self.dim[1], scale_factor=4) if self.use_carafe else nn.Upsample(scale_factor=4)
+                self.level_2_upsample = CARAFEPack(channels=self.dim[2], scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
+        
+        if self.level in [0, 1]:
+            if use_softpool:
+                self.pool = SoftPool2d(kernel_size=2, stride=2)
+            else:
+                self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        
         # add expand layer
         self.expand = Conv(
             self.inter_dim, self.inter_dim, expand_kernel, 1, act=act)
@@ -249,73 +242,45 @@ class ASFF(nn.Module):
 
                 level_1_resized = self.stride_level_1(x_level_1)
 
-                level_2_downsampled_inter = F.max_pool2d(
-                    x_level_2, 3, stride=2, padding=1)
+                level_2_downsampled_inter = self.pool(x_level_2)
                 level_2_resized = self.stride_level_2(
                     level_2_downsampled_inter)
 
-                level_3_downsampled_inter = F.max_pool2d(
-                    x_level_3, 3, stride=2, padding=1)
-                level_3_downsampled_inter = F.max_pool2d(
-                    level_3_downsampled_inter, 3, stride=2, padding=1)
-                level_3_resized = self.stride_level_3(
-                    level_3_downsampled_inter)
+                level_3_downsampled_inter = self.pool(x_level_3)
+                level_3_downsampled_inter = self.pool(level_3_downsampled_inter)
+                level_3_resized = self.stride_level_3(level_3_downsampled_inter)
             elif self.level == 1:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                if self.use_carafe:
-                    level_0_resized = self.upsample_level_0(level_0_compressed)
-                else:
-                    level_0_resized = F.interpolate(
-                        level_0_compressed, scale_factor=2, mode='nearest')
+                level_0_resized = self.upsample_level_0(level_0_compressed)
 
                 level_1_resized = x_level_1
 
                 level_2_resized = self.stride_level_2(x_level_2)
 
-                level_3_downsampled_inter = F.max_pool2d(
-                    x_level_3, 3, stride=2, padding=1)
-                level_3_resized = self.stride_level_3(
-                    level_3_downsampled_inter)
+                level_3_downsampled_inter = self.pool(x_level_3)
+                level_3_resized = self.stride_level_3(level_3_downsampled_inter)
             elif self.level == 2:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                if self.use_carafe:
-                    level_0_resized = self.upsample_level_0(level_0_compressed)
-                else:
-                    level_0_resized = F.interpolate(
-                        level_0_compressed, scale_factor=4, mode='nearest')
+                level_0_resized = self.upsample_level_0(level_0_compressed)
+
 
                 level_1_compressed = self.compress_level_1(x_level_1)
-                if self.use_carafe:
-                    level_1_resized = self.upsample_level_1(level_1_compressed)
-                else:
-                    level_1_resized = F.interpolate(
-                        level_1_compressed, scale_factor=2, mode='nearest')
+                level_1_resized = self.upsample_level_1(level_1_compressed)
 
                 level_2_resized = x_level_2
 
                 level_3_resized = self.stride_level_3(x_level_3)
             elif self.level == 3:
                 level_0_compressed = self.compress_level_0(x_level_0)
-                if self.use_carafe:
-                    level_0_resized = self.upsample_level_0(level_0_compressed)
-                else:
-                    level_0_resized = F.interpolate(
-                        level_0_compressed, scale_factor=8, mode='nearest')
-
+                level_0_resized = self.upsample_level_0(level_0_compressed)
+  
                 level_1_compressed = self.compress_level_1(x_level_1)
-                if self.use_carafe:
-                    level_1_resized = self.upsample_level_1(level_1_compressed)
-                else:
-                    level_1_resized = F.interpolate(
-                        level_1_compressed, scale_factor=4, mode='nearest')
+                level_1_resized = self.upsample_level_1(level_1_compressed)
+
 
                 level_2_compressed = self.compress_level_2(x_level_2)
-                if self.use_carafe:
-                    level_2_resized = self.upsample_level_2(level_2_compressed)
-                else:
-                    level_2_resized = F.interpolate(
-                        level_2_compressed, scale_factor=2, mode='nearest')
-
+                level_2_resized = self.upsample_level_2(level_2_compressed)
+ 
                 level_3_resized = x_level_3
         else:
             """
@@ -331,20 +296,14 @@ class ASFF(nn.Module):
                 level_1_resized = self.fuse_channels(level_1_resized, 2)
 
                 level_2_resized = self.focus_channels(x_level_2)
-                level_2_resized = F.max_pool2d(
-                    level_2_resized, 3, stride=2, padding=1)
+                level_2_resized = self.pool(level_2_resized)
 
                 level_3_resized = self.focus_channels(x_level_3)
                 level_3_resized = self.fuse_channels(level_3_resized, 2)
-                level_3_resized = F.max_pool2d(
-                    level_3_resized, 3, stride=2, padding=1)
+                level_3_resized = self.pool(level_3_resized)
                 level_3_resized = self.focus_channels(level_3_resized)
             elif self.level == 1:
-                if self.use_carafe:
-                    level_0_resized = self.level_0_upsample(x_level_0)
-                else:
-                    level_0_resized = F.interpolate(
-                        x_level_0, scale_factor=2, mode='nearest')
+                level_0_resized = self.level_0_upsample(x_level_0)
                 level_0_resized = self.fuse_channels(level_0_resized, 2)
 
                 level_1_resized = x_level_1
@@ -353,21 +312,13 @@ class ASFF(nn.Module):
                 level_2_resized = self.fuse_channels(level_2_resized, 2)
 
                 level_3_resized = self.focus_channels(x_level_3)
-                level_3_resized = F.max_pool2d(
-                    level_3_resized, 3, stride=2, padding=1)
+                level_3_resized = self.pool(level_3_resized)
             elif self.level == 2:
-                if self.use_carafe:
-                    level_0_resized = self.level_0_upsample(x_level_0)
-                else:
-                    level_0_resized = F.interpolate(
-                        x_level_0, scale_factor=4, mode='nearest')
+                level_0_resized = self.level_0_upsample(x_level_0)
                 level_0_resized = self.fuse_channels(level_0_resized, 4)
 
-                if self.use_carafe:
-                    level_1_resized = self.level_1_upsample(x_level_1)
-                else:
-                    level_1_resized = F.interpolate(
-                        x_level_1, scale_factor=2, mode='nearest')
+
+                level_1_resized = self.level_1_upsample(x_level_1)
                 level_1_resized = self.fuse_channels(level_1_resized, 2)
 
                 level_2_resized = x_level_2
@@ -375,25 +326,13 @@ class ASFF(nn.Module):
                 level_3_resized = self.focus_channels(x_level_3)
                 level_3_resized = self.fuse_channels(level_3_resized, 2)
             elif self.level == 3:
-                if self.use_carafe:
-                    level_0_resized = self.level_0_upsample(x_level_0)
-                else:
-                    level_0_resized = F.interpolate(
-                        x_level_0, scale_factor=8, mode='nearest')
+                level_0_resized = self.level_0_upsample(x_level_0)
                 level_0_resized = self.fuse_channels(level_0_resized, 8)
 
-                if self.use_carafe:
-                    level_1_resized = self.level_1_upsample(x_level_1)
-                else:
-                    level_1_resized = F.interpolate(
-                        x_level_1, scale_factor=4, mode='nearest')
+                level_1_resized = self.level_1_upsample(x_level_1)
                 level_1_resized = self.fuse_channels(level_1_resized, 4)
 
-                if self.use_carafe:
-                    level_2_resized = self.level_2_upsample(x_level_2)
-                else:
-                    level_2_resized = F.interpolate(
-                        x_level_2, scale_factor=2, mode='nearest')
+                level_2_resized = self.level_2_upsample(x_level_2)
                 level_2_resized = self.fuse_channels(level_2_resized, 2)
 
                 level_3_resized = x_level_3
@@ -419,7 +358,7 @@ class ASFF(nn.Module):
 
 @MODELS.register_module()
 class TinyASFFNeck(nn.Module):
-    def __init__(self, widen_factor, use_att='ASFF', use_carafe=False, asff_channel=2, expand_kernel=3, act='silu'):
+    def __init__(self, widen_factor, use_att='ASFF', use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
         super().__init__()
         self.asff_1 = ASFF(
             level=0,
@@ -428,6 +367,7 @@ class TinyASFFNeck(nn.Module):
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
             use_carafe=use_carafe,
+            use_softpool=use_softpool,
             act=act,
         )
         self.asff_2 = ASFF(
@@ -437,6 +377,7 @@ class TinyASFFNeck(nn.Module):
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
             use_carafe=use_carafe,
+            use_softpool=use_softpool,
             act=act,
         )
         self.asff_3 = ASFF(
@@ -446,6 +387,7 @@ class TinyASFFNeck(nn.Module):
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
             use_carafe=use_carafe,
+            use_softpool=use_softpool,
             act=act,
         )
         self.asff_4 = ASFF(
@@ -455,6 +397,7 @@ class TinyASFFNeck(nn.Module):
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
             use_carafe=use_carafe,
+            use_softpool=use_softpool,
             act=act,
         )
 
@@ -465,3 +408,20 @@ class TinyASFFNeck(nn.Module):
         pan_out3 = self.asff_4(x)
         outputs = (pan_out3, pan_out2, pan_out1, pan_out0)
         return outputs
+
+if __name__ == '__main__':
+    input=[torch.randn(1,128,160,160), torch.randn(1,256,80,80), torch.randn(1,512,40,40), torch.randn(1,1024,20,20)]
+    model = TinyASFFNeck(widen_factor=1, use_softpool=True, use_carafe=False)
+    output = model(input)
+    # print(output.shape)
+    from fvcore.nn import FlopCountAnalysis
+    from fvcore.nn import flop_count_table
+    from fvcore.nn import flop_count_str
+    # flops = FlopCountAnalysis(model, input)
+    # print(f'input shape: {input[0].shape}')
+    # print(flop_count_table(flops))
+    # print(flop_count_str(flops))
+    # input = torch.randn(1, 10, 41, 41)
+    # out = F.max_pool2d(input, 3, stride=2, padding=1)
+    # print(out.shape)
+    

@@ -48,3 +48,106 @@ class CoordAttention(nn.Module):
         out = identity * a_w * a_h
 
         return out
+
+if __name__ == '__main__':
+    input=torch.randn(1,512,20,20)
+    reduction = 32
+    model = CoordAttention(in_channels=512, reduction=reduction)
+    output=model(input)
+    # print(output.shape)
+    from fvcore.nn import FlopCountAnalysis
+    from fvcore.nn import flop_count_table
+    from fvcore.nn import flop_count_str
+    flops = FlopCountAnalysis(model, input)
+    print(f'input shape: {input.shape}')
+    print(f'reduce: {reduction}')
+    print(flop_count_table(flops))
+    # print(flop_count_str(flops))
+    
+    '''
+    input shape: torch.Size([1, 512, 20, 20])
+    reduce: 4
+    | module          | #parameters or shape   | #flops   |
+    |:----------------|:-----------------------|:---------|
+    | model           | 0.198M                 | 5.678M   |
+    |  conv1          |  65.664K               |  2.621M  |
+    |   conv1.weight  |   (128, 512, 1, 1)     |          |
+    |   conv1.bias    |   (128,)               |          |
+    |  bn1            |  0.256K                |  25.6K   |
+    |   bn1.weight    |   (128,)               |          |
+    |   bn1.bias      |   (128,)               |          |
+    |  conv_h         |  66.048K               |  1.311M  |
+    |   conv_h.weight |   (512, 128, 1, 1)     |          |
+    |   conv_h.bias   |   (512,)               |          |
+    |  conv_w         |  66.048K               |  1.311M  |
+    |   conv_w.weight |   (512, 128, 1, 1)     |          |
+    |   conv_w.bias   |   (512,)               |          |
+    |  pool_h         |                        |  0.205M  |
+    |  pool_w         |                        |  0.205M  |
+    '''
+    
+    '''
+    input shape: torch.Size([1, 512, 20, 20])
+    reduce: 8
+    | module          | #parameters or shape   | #flops   |
+    |:----------------|:-----------------------|:---------|
+    | model           | 99.52K                 | 3.044M   |
+    |  conv1          |  32.832K               |  1.311M  |
+    |   conv1.weight  |   (64, 512, 1, 1)      |          |
+    |   conv1.bias    |   (64,)                |          |
+    |  bn1            |  0.128K                |  12.8K   |
+    |   bn1.weight    |   (64,)                |          |
+    |   bn1.bias      |   (64,)                |          |
+    |  conv_h         |  33.28K                |  0.655M  |
+    |   conv_h.weight |   (512, 64, 1, 1)      |          |
+    |   conv_h.bias   |   (512,)               |          |
+    |  conv_w         |  33.28K                |  0.655M  |
+    |   conv_w.weight |   (512, 64, 1, 1)      |          |
+    |   conv_w.bias   |   (512,)               |          |
+    |  pool_h         |                        |  0.205M  |
+    |  pool_w         |                        |  0.205M  |
+    '''
+    
+    '''
+    input shape: torch.Size([1, 512, 20, 20])
+    reduce: 16
+    | module          | #parameters or shape   | #flops   |
+    |:----------------|:-----------------------|:---------|
+    | model           | 50.272K                | 1.727M   |
+    |  conv1          |  16.416K               |  0.655M  |
+    |   conv1.weight  |   (32, 512, 1, 1)      |          |
+    |   conv1.bias    |   (32,)                |          |
+    |  bn1            |  64                    |  6.4K    |
+    |   bn1.weight    |   (32,)                |          |
+    |   bn1.bias      |   (32,)                |          |
+    |  conv_h         |  16.896K               |  0.328M  |
+    |   conv_h.weight |   (512, 32, 1, 1)      |          |
+    |   conv_h.bias   |   (512,)               |          |
+    |  conv_w         |  16.896K               |  0.328M  |
+    |   conv_w.weight |   (512, 32, 1, 1)      |          |
+    |   conv_w.bias   |   (512,)               |          |
+    |  pool_h         |                        |  0.205M  |
+    |  pool_w         |                        |  0.205M  |
+    '''
+    
+    '''
+    input shape: torch.Size([1, 512, 20, 20])
+    reduce: 32
+    | module          | #parameters or shape   | #flops   |
+    |:----------------|:-----------------------|:---------|
+    | model           | 25.648K                | 1.068M   |
+    |  conv1          |  8.208K                |  0.328M  |
+    |   conv1.weight  |   (16, 512, 1, 1)      |          |
+    |   conv1.bias    |   (16,)                |          |
+    |  bn1            |  32                    |  3.2K    |
+    |   bn1.weight    |   (16,)                |          |
+    |   bn1.bias      |   (16,)                |          |
+    |  conv_h         |  8.704K                |  0.164M  |
+    |   conv_h.weight |   (512, 16, 1, 1)      |          |
+    |   conv_h.bias   |   (512,)               |          |
+    |  conv_w         |  8.704K                |  0.164M  |
+    |   conv_w.weight |   (512, 16, 1, 1)      |          |
+    |   conv_w.bias   |   (512,)               |          |
+    |  pool_h         |                        |  0.205M  |
+    |  pool_w         |                        |  0.205M  |
+    '''

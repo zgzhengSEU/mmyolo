@@ -10,6 +10,8 @@ from mmyolo.registry import MODELS
 from ..layers import MaxPoolAndStrideConvBlock
 from .base_backbone import BaseBackbone
 
+import softpool_cuda
+from SoftPool import SoftPool2d
 
 @MODELS.register_module()
 class YOLOv7Backbone(BaseBackbone):
@@ -133,6 +135,7 @@ class YOLOv7Backbone(BaseBackbone):
                  input_channels: int = 3,
                  out_indices: Tuple[int] = (2, 3, 4),
                  frozen_stages: int = -1,
+                 use_softpool: bool = False,
                  plugins: Union[dict, List[dict]] = None,
                  norm_cfg: ConfigType = dict(
                      type='BN', momentum=0.03, eps=0.001),
@@ -141,6 +144,7 @@ class YOLOv7Backbone(BaseBackbone):
                  init_cfg: OptMultiConfig = None):
         assert arch in self.arch_settings.keys()
         self.arch = arch
+        self.use_softpool = use_softpool
         super().__init__(
             self.arch_settings[arch],
             deepen_factor,
@@ -262,7 +266,10 @@ class YOLOv7Backbone(BaseBackbone):
                 act_cfg=self.act_cfg)
         elif self.arch == 'Tiny':
             if stage_idx != 0:
-                downsample_layer = nn.MaxPool2d(2, 2)
+                if self.use_softpool:
+                    downsample_layer = SoftPool2d(2, 2)
+                else:
+                    downsample_layer = nn.MaxPool2d(2, 2)
             else:
                 downsample_layer = None
         elif self.arch in ['L', 'X']:

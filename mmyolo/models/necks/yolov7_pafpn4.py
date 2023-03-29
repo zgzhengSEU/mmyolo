@@ -9,6 +9,7 @@ from mmyolo.registry import MODELS
 from ..layers import MaxPoolAndStrideConvBlock, RepVGGBlock, SPPFCSPBlock
 from .base_yolo_neck import BaseYOLONeck
 from mmcv.ops.carafe import CARAFEPack
+# from carafe import CARAFEPack
 
 @MODELS.register_module()
 class YOLOv7PAFPN4(BaseYOLONeck):

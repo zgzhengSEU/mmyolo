@@ -83,9 +83,104 @@ class ShuffleCoordAttention(nn.Module):
 
 
 if __name__ == '__main__':
-    input=torch.randn(50,512,7,7)
-    sca = ShuffleCoordAttention(in_channels=512)
-    output=sca(input)
-    print(output.shape)
-
+    input=torch.randn(1,512,20,20)
+    groups = 32
+    model = ShuffleCoordAttention(in_channels=512, groups=groups)
+    output=model(input)
+    # print(output.shape)
+    from fvcore.nn import FlopCountAnalysis
+    from fvcore.nn import flop_count_table
+    from fvcore.nn import flop_count_str
+    flops = FlopCountAnalysis(model, input)
+    print(f'input shape: {input.shape}')
+    print(f'reduce: {groups}')
+    print(flop_count_table(flops))
+    # print(flop_count_str(flops))
     
+    '''
+    input shape: torch.Size([1, 512, 20, 20])
+    reduce: 4
+    | module          | #parameters or shape   | #flops   |
+    |:----------------|:-----------------------|:---------|
+    | model           | 49.792K                | 5.755M   |
+    |  conv1          |  16.512K               |  2.621M  |
+    |   conv1.weight  |   (128, 128, 1, 1)     |          |
+    |   conv1.bias    |   (128,)               |          |
+    |  bn1            |  0.256K                |  0.102M  |
+    |   bn1.weight    |   (128,)               |          |
+    |   bn1.bias      |   (128,)               |          |
+    |  conv_h         |  16.512K               |  1.311M  |
+    |   conv_h.weight |   (128, 128, 1, 1)     |          |
+    |   conv_h.bias   |   (128,)               |          |
+    |  conv_w         |  16.512K               |  1.311M  |
+    |   conv_w.weight |   (128, 128, 1, 1)     |          |
+    |   conv_w.bias   |   (128,)               |          |
+    |  pool_h         |                        |  0.205M  |
+    |  pool_w         |                        |  0.205M  |
+    '''
+
+    '''
+    input shape: torch.Size([1, 512, 20, 20])
+    reduce: 8
+    | module          | #parameters or shape   | #flops   |
+    |:----------------|:-----------------------|:---------|
+    | model           | 12.608K                | 3.133M   |
+    |  conv1          |  4.16K                 |  1.311M  |
+    |   conv1.weight  |   (64, 64, 1, 1)       |          |
+    |   conv1.bias    |   (64,)                |          |
+    |  bn1            |  0.128K                |  0.102M  |
+    |   bn1.weight    |   (64,)                |          |
+    |   bn1.bias      |   (64,)                |          |
+    |  conv_h         |  4.16K                 |  0.655M  |
+    |   conv_h.weight |   (64, 64, 1, 1)       |          |
+    |   conv_h.bias   |   (64,)                |          |
+    |  conv_w         |  4.16K                 |  0.655M  |
+    |   conv_w.weight |   (64, 64, 1, 1)       |          |
+    |   conv_w.bias   |   (64,)                |          |
+    |  pool_h         |                        |  0.205M  |
+    |  pool_w         |                        |  0.205M  |
+    '''
+
+    '''
+    input shape: torch.Size([1, 512, 20, 20])
+    reduce: 16
+    | module          | #parameters or shape   | #flops   |
+    |:----------------|:-----------------------|:---------|
+    | model           | 3.232K                 | 1.823M   |
+    |  conv1          |  1.056K                |  0.655M  |
+    |   conv1.weight  |   (32, 32, 1, 1)       |          |
+    |   conv1.bias    |   (32,)                |          |
+    |  bn1            |  64                    |  0.102M  |
+    |   bn1.weight    |   (32,)                |          |
+    |   bn1.bias      |   (32,)                |          |
+    |  conv_h         |  1.056K                |  0.328M  |
+    |   conv_h.weight |   (32, 32, 1, 1)       |          |
+    |   conv_h.bias   |   (32,)                |          |
+    |  conv_w         |  1.056K                |  0.328M  |
+    |   conv_w.weight |   (32, 32, 1, 1)       |          |
+    |   conv_w.bias   |   (32,)                |          |
+    |  pool_h         |                        |  0.205M  |
+    |  pool_w         |                        |  0.205M  |
+    '''
+
+    '''
+    input shape: torch.Size([1, 512, 20, 20])
+    reduce: 32
+    | module          | #parameters or shape   | #flops   |
+    |:----------------|:-----------------------|:---------|
+    | model           | 0.848K                 | 1.167M   |
+    |  conv1          |  0.272K                |  0.328M  |
+    |   conv1.weight  |   (16, 16, 1, 1)       |          |
+    |   conv1.bias    |   (16,)                |          |
+    |  bn1            |  32                    |  0.102M  |
+    |   bn1.weight    |   (16,)                |          |
+    |   bn1.bias      |   (16,)                |          |
+    |  conv_h         |  0.272K                |  0.164M  |
+    |   conv_h.weight |   (16, 16, 1, 1)       |          |
+    |   conv_h.bias   |   (16,)                |          |
+    |  conv_w         |  0.272K                |  0.164M  |
+    |   conv_w.weight |   (16, 16, 1, 1)       |          |
+    |   conv_w.bias   |   (16,)                |          |
+    |  pool_h         |                        |  0.205M  |
+    |  pool_w         |                        |  0.205M  |
+    '''

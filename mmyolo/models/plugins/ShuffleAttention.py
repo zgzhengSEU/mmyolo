@@ -81,10 +81,18 @@ class ShuffleAttention(nn.Module):
         out = self.channel_shuffle(out, 2)
         return out
 
-# if __name__ == '__main__':
-#     input=torch.randn(50,512,7,7)
-#     se = ShuffleAttention(channel=512,groups=8)
-#     output=se(input)
-#     print(output.shape)
-
+if __name__ == '__main__':
+    input=torch.randn(1,512,20,20)
+    groups = 16
+    model = ShuffleAttention(in_channels=512, groups=groups)
+    output=model(input)
+    # print(output.shape)
+    from fvcore.nn import FlopCountAnalysis
+    from fvcore.nn import flop_count_table
+    from fvcore.nn import flop_count_str
+    flops = FlopCountAnalysis(model, input)
+    print(f'input shape: {input.shape}')
+    print(f'reduce: {groups}')
+    print(flop_count_table(flops))
+    # print(flop_count_str(flops))
     
