@@ -1,4 +1,4 @@
-_base_ = '../../../configs/_base_/default_runtime.py'
+_base_ = ['../../../configs/_base_/default_runtime.py', '../../../configs/_base_/det_p5_tta.py']
 
 # ========================Frequently modified parameters======================
 # -----data related-----

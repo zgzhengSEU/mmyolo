@@ -1,16 +1,17 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["p2","autoAdamW","CBAM1234"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", 'CEPAFPN', 'SCA', 'TinyASFF']
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_p2_CBAM1234_autoAdamW_A5000"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,
-    tags=TAGS
+    tags=TAGS,
+    mode="offline"
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
@@ -48,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 32
+train_batch_size_per_gpu = 1
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -68,35 +69,38 @@ num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
-    # backbone=dict(
-    #     arch='Tiny', 
-    #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-    #     out_indices=(1, 2, 3, 4)),
     backbone=dict(
-        arch='Tiny', 
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        out_indices=(1, 2, 3, 4),
         plugins=[
             dict(
-                cfg=dict(type='CBAM'),
+                cfg=dict(type='ShuffleCoordAttention', groups=8),
                 stages=(True, True, True, True))
-        ]),    
-    neck=dict(
-        is_tiny_version=True,
-        in_channels=[64, 128, 256, 512],
-        out_channels=[32, 64, 128, 256],
-        block_cfg=dict(
-            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
+        ],
+        arch='Tiny', 
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        use_repconv_outs=False),
+        out_indices=(1, 2, 3, 4)),  
+    neck=[
+        dict(
+            use_carafe=True,
+            type='YOLOv7PAFPN4',
+            upsample_feats_cat_first=False,
+            norm_cfg=norm_cfg,
+            is_tiny_version=True,
+            in_channels=[64, 128, 256, 512],
+            out_channels=[32, 64, 128, 256], # 4 层时不会*2
+            block_cfg=dict(
+                type='TinyDownSampleBlock', middle_ratio=0.25),
+            act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+            # act_cfg=dict(type='SiLU', inplace=True),
+            use_repconv_outs=False),
+        dict(
+            type='TinyASFFNeck',
+            widen_factor=0.5,
+            use_carafe=True,
+            use_att='TinyASFF')],
     bbox_head=dict(
         head_module=dict(
-            type='YOLOv7p6HeadModule',
-            in_channels=[32, 64, 128, 256],
-            use_aux = False,
-            featmap_strides=strides,
-            norm_cfg=norm_cfg,
-            act_cfg=dict(type='SiLU', inplace=True)),
+            in_channels = [64, 128, 256, 512],
+            featmap_strides=strides),
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
         loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
@@ -178,6 +182,7 @@ weight_decay = _base_.weight_decay
 #     constructor='YOLOv7OptimWrapperConstructor')
 
 # SGD -> AdamW
+base_lr = 0.004
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',

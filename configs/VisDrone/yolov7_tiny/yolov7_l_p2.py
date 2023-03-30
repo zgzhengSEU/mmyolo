@@ -1,4 +1,24 @@
 _base_ = ['../../../configs/_base_/default_runtime.py', '../../../configs/_base_/det_p5_tta.py']
+# ======================== wandb & run ==============================
+TAGS = ["H100", "load", "p2","AdamW", 'CEPAFPN', 'SCA', 'TinyASFF']
+GROUP_NAME = "yolov7_l"
+ALGO_NAME = "yolov7_l_p2_AdamW_CEPAFPN_SCAg16-1234_TinyCEASFF"
+DATASET_NAME = "VisDrone"
+
+Wandb_init_kwargs = dict(
+    project=DATASET_NAME,
+    group=GROUP_NAME,
+    name=ALGO_NAME,
+    tags=TAGS,
+    mode="online"
+)
+visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
+
+import datetime as dt
+NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
+
+load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_l_syncbn_fast_8x16b-300e_coco/yolov7_l_syncbn_fast_8x16b-300e_coco_20221123_023601-8113c0eb.pth"
 
 # ========================Frequently modified parameters======================
 # -----data related-----
@@ -11,13 +31,10 @@ train_data_prefix = 'images/train/'  # Prefix of train image path
 # Path of val annotation file
 val_ann_file = 'annotations/val.json'
 val_data_prefix = 'images/val/'  # Prefix of val image path
-# Path of test annotatino file
-test_ann_file = 'annotations/test.json'
-test_data_prefix = 'images/test/'  # Prefix of val image path
 
 num_classes = 10  # Number of classes for classification
 # Batch size of a single GPU during training
-train_batch_size_per_gpu = 16
+train_batch_size_per_gpu = 32
 # Worker to pre-fetch data for each single GPU during training
 train_num_workers = 8
 # persistent_workers must be False if num_workers is 0
@@ -25,11 +42,25 @@ persistent_workers = True
 
 # -----model related-----
 # Basic size of multi-scale prior box
-anchors = [
-    [(12, 16), (19, 36), (40, 28)],  # P3/8
-    [(36, 75), (76, 55), (72, 146)],  # P4/16
-    [(142, 110), (192, 243), (459, 401)]  # P5/32
+v5_k_means = [
+    [[3, 4], [3, 7], [6, 6]], 
+    [[6, 11], [14, 7], [10, 15]], 
+    [[17, 12], [17, 23], [31, 16]], 
+    [[27, 36], [54, 28], [67, 82]]
 ]
+k_means = [
+    [[4, 5], [6, 10], [10, 7]], 
+    [[10, 17], [18, 11], [16, 25]], 
+    [[29, 16], [26, 37], [45, 26]], 
+    [[42, 59], [71, 41], [95, 86]]
+]
+DE = [
+    [[3, 4], [4, 7], [6, 5]], 
+    [[5, 11], [10, 7], [9, 15]], 
+    [[16, 10], [14, 21], [24, 14]], 
+    [[23, 31], [37, 21], [51, 44]]
+]
+anchors = v5_k_means # 修改anchor
 # -----train val related-----
 # Base learning rate for optim_wrapper. Corresponding to 8xb16=128 bs
 base_lr = 0.01
@@ -69,8 +100,8 @@ batch_shapes_cfg = dict(
     extra_pad_ratio=0.5)
 
 # -----model related-----
-strides = [8, 16, 32]  # Strides of multi-scale prior box
-num_det_layers = 3  # The number of model output scales
+strides = [4, 8, 16, 32]  # Strides of multi-scale prior box
+num_det_layers = 4  # The number of model output scales
 norm_cfg = dict(type='BN', momentum=0.03, eps=0.001)
 
 # Data augmentation
@@ -91,7 +122,7 @@ simota_iou_weight = 3.0
 simota_cls_weight = 1.0
 prior_match_thr = 4.  # Priori box matching threshold
 obj_level_weights = [4., 1.,
-                     0.4]  # The obj loss weights of the three output layers
+                     0.25, 0.06]  # The obj loss weights of the three output layers
 
 lr_factor = 0.1  # Learning rate scaling factor
 weight_decay = 0.0005
@@ -111,30 +142,43 @@ model = dict(
         std=[255., 255., 255.],
         bgr_to_rgb=True),
     backbone=dict(
+        plugins=[
+            dict(
+                cfg=dict(type='ShuffleCoordAttention', groups=16),
+                stages=(True, True, True, True))
+        ],
+        out_indices=(1, 2, 3, 4),
         type='YOLOv7Backbone',
         arch='L',
         norm_cfg=norm_cfg,
         act_cfg=dict(type='SiLU', inplace=True)),
-    neck=dict(
-        type='YOLOv7PAFPN',
-        block_cfg=dict(
-            type='ELANBlock',
-            middle_ratio=0.5,
-            block_ratio=0.25,
-            num_blocks=4,
-            num_convs_in_block=1),
-        upsample_feats_cat_first=False,
-        in_channels=[512, 1024, 1024],
-        # The real output channel will be multiplied by 2
-        out_channels=[128, 256, 512],
-        norm_cfg=norm_cfg,
-        act_cfg=dict(type='SiLU', inplace=True)),
+    neck=[
+        dict(
+            use_carafe=True,
+            type='YOLOv7PAFPN4',
+            block_cfg=dict(
+                type='ELANBlock',
+                middle_ratio=0.5,
+                block_ratio=0.25,
+                num_blocks=4,
+                num_convs_in_block=1),
+            upsample_feats_cat_first=False,
+            in_channels=[256, 512, 1024, 1024],
+            # The real output channel will be multiplied by 2
+            out_channels=[64, 128, 256, 512],
+            norm_cfg=norm_cfg,
+            act_cfg=dict(type='SiLU', inplace=True)),
+        dict(
+            type='TinyASFFNeck',
+            widen_factor=1,
+            use_carafe=True,
+            use_att='ASFF')],
     bbox_head=dict(
         type='YOLOv7Head',
         head_module=dict(
             type='YOLOv7HeadModule',
             num_classes=num_classes,
-            in_channels=[256, 512, 1024],
+            in_channels=[128, 256, 512, 1024],
             featmap_strides=strides,
             num_base_priors=3),
         prior_generator=dict(
@@ -278,35 +322,14 @@ val_dataloader = dict(
         pipeline=test_pipeline,
         batch_shapes_cfg=batch_shapes_cfg))
 
-test_dataloader = dict(
-    batch_size=val_batch_size_per_gpu,
-    num_workers=val_num_workers,
-    persistent_workers=persistent_workers,
-    pin_memory=True,
-    drop_last=False,
-    sampler=dict(type='DefaultSampler', shuffle=False),
-    dataset=dict(
-        type=dataset_type,
-        data_root=data_root,
-        metainfo=METAINFO,
-        test_mode=True,
-        data_prefix=dict(img=test_data_prefix),
-        ann_file=test_ann_file,
-        pipeline=test_pipeline,
-        batch_shapes_cfg=batch_shapes_cfg))
-
+test_dataloader = val_dataloader
 
 param_scheduler = None
 optim_wrapper = dict(
     type='OptimWrapper',
-    optimizer=dict(
-        type='SGD',
-        lr=base_lr,
-        momentum=0.937,
-        weight_decay=weight_decay,
-        nesterov=True,
-        batch_size_per_gpu=train_batch_size_per_gpu),
-    constructor='YOLOv7OptimWrapperConstructor')
+    optimizer=dict(type='AdamW', lr=0.004, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(
     param_scheduler=dict(
@@ -336,11 +359,7 @@ val_evaluator = dict(
     proposal_nums=(100, 1, 10),  # Can be accelerated
     ann_file=data_root + val_ann_file,
     metric='bbox')
-test_evaluator = dict(
-    type='mmdet.CocoMetric',
-    proposal_nums=(100, 1, 10),  # Can be accelerated
-    ann_file=data_root + test_ann_file,
-    metric='bbox')
+test_evaluator = val_evaluator
 
 train_cfg = dict(
     type='EpochBasedTrainLoop',

@@ -55,8 +55,8 @@ python ./projects/easydeploy/tools/export.py \
 
 ```shell
 python ./projects/easydeploy/tools/export.py \
-	runs/VisDrone/yolov7_tiny_tinyp2_AdamW_TA1234-SA1234_ASFFsimCE/20230316_005302/yolov7_tiny_tinyp2_AdamW_TA1234-SA1234_ASFFsimCE.py \
-	runs/VisDrone/yolov7_tiny_tinyp2_AdamW_TA1234-SA1234_ASFFsimCE/20230316_005302/epoch_2.pth \
+	runs/VisDrone/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF/20230330_202249/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF.py \
+	runs/VisDrone/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF/20230330_202249/epoch_1.pth \
 	--work-dir work_dir \
     --img-size 640 640 \
     --batch 32 \

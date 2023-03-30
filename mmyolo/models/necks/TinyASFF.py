@@ -115,21 +115,23 @@ class ASFF(nn.Module):
         self.type = type
         self.use_carafe = use_carafe
         self.use_softpool = use_softpool
-        self.dim = [
-            int(1024 * multiplier),
-            int(512 * multiplier),
-            int(256 * multiplier),
-            int(128 * multiplier)
-        ]
-        Conv = BaseConv
-
-        if self.type == 'ASFFL':
+        if self.type == 'ASFF-X':
+            self.dim = [
+                int(1280 * multiplier),
+                int(640 * multiplier),
+                int(320 * multiplier),
+                int(160 * multiplier)
+            ]
+        else:
             self.dim = [
                 int(1024 * multiplier),
-                int(1024 * multiplier),
                 int(512 * multiplier),
-                int(256 * multiplier)
+                int(256 * multiplier),
+                int(128 * multiplier)
             ]
+            
+        Conv = BaseConv
+        
         self.inter_dim = self.dim[self.level]
 
         if self.type == 'ASFF':
