@@ -170,10 +170,10 @@ bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-4 -q gpu_v100 -gpu "num=1:mode=exclusive_
 bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-34 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-34.py --amp"
 bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-234.py --amp"
 bsub -J yolov7_tiny_tinyp2_AdamW_SCAg8-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-1234.py --amp"
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-4 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-4.py --amp"
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-34 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-34.py --amp"
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-234.py --amp"
-bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg8-1234.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-4 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg16-4.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-34 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg16-34.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg16-234.py --amp"
+bsub -J yolov7_tiny_tinyp2_AdamW_SCAg16-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_SCAg16-1234.py --amp"
 bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234 -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234.py --amp"
 bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF.py --amp"
 
@@ -194,6 +194,28 @@ bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg4-1234_TinyCEASFF -q gpu_v100 -gpu 
 bsub -J yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg4-1234_TinyCEASFF_VFL-SIOU -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && python tools/train.py myconfig/VisDrone-seu/yolov7_tiny_new/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg4-1234_TinyCEASFF_VFL-SIOU.py --amp"
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# =========================================== only test ==================
+bsub -J install-carafe -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yufei/220200817/.conda/envs/mmyolo/bin/python setup.py develop"
+
+bsub -J install-carafe -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && /seu_share/home/yanglvxi/220200815/.conda/envs/mmyolo/bin/python setup.py develop"
+
+bsub -J install-carafe -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && make install && make test"
 
 
 

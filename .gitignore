@@ -131,3 +131,4 @@ output.[0-9]*
 *.pt
 *.py~
 *.sh~
+pip install
