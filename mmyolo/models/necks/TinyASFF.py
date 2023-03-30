@@ -4,9 +4,6 @@ import torch.nn.functional as F
 import torch.nn as nn
 from mmcv.ops.carafe import CARAFEPack
 # from carafe import CARAFEPack
-import softpool_cuda
-from SoftPool import SoftPool2d
-
 class SiLU(nn.Module):
     """export-friendly inplace version of nn.SiLU()"""
 
@@ -174,6 +171,8 @@ class ASFF(nn.Module):
         
         if self.level in [0, 1]:
             if use_softpool:
+                import softpool_cuda
+                from SoftPool import SoftPool2d
                 self.pool = SoftPool2d(kernel_size=2, stride=2)
             else:
                 self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
