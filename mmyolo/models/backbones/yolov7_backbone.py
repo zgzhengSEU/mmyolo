@@ -10,8 +10,6 @@ from mmyolo.registry import MODELS
 from ..layers import MaxPoolAndStrideConvBlock
 from .base_backbone import BaseBackbone
 
-import softpool_cuda
-from SoftPool import SoftPool2d
 
 @MODELS.register_module()
 class YOLOv7Backbone(BaseBackbone):
@@ -267,6 +265,8 @@ class YOLOv7Backbone(BaseBackbone):
         elif self.arch == 'Tiny':
             if stage_idx != 0:
                 if self.use_softpool:
+                    import softpool_cuda
+                    from SoftPool import SoftPool2d
                     downsample_layer = SoftPool2d(2, 2)
                 else:
                     downsample_layer = nn.MaxPool2d(2, 2)
