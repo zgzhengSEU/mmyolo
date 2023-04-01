@@ -1635,6 +1635,7 @@ class TinySPPFCSPBlock(BaseModule):
             2 * mid_channels,
             out_channels,
             1,
+            groups=self.groups,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
             act_cfg=act_cfg)
@@ -1676,7 +1677,7 @@ class TinySPPFCSPBlock(BaseModule):
                 x1 = self.fuse_layers(torch.cat(concat_list, 1))
 
         x2 = self.short_layer(x)
-        return self.final_conv(torch.cat((x1, x2), dim=1))
+        return self.final_conv(self.shuffle_channels(torch.cat((x1, x2), dim=1), groups=self.groups))
 
 
 if __name__ == '__main__':

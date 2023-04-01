@@ -3,7 +3,7 @@ _base_ = './yolov7_l_origin.py'
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "tinyp2","AdamW", "TinyASFF"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinyCEASFF"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinyCEASFF-g32x2"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -99,8 +99,8 @@ model = dict(
         dict(
             type='TinyASFFNeck',
             widen_factor=0.5,
-            groups=1,
-            use_two_group_expand=False,
+            groups=32,
+            use_two_group_expand=True,
             use_carafe=True,
             use_att='TinyASFF')],
     bbox_head=dict(

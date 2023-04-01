@@ -87,6 +87,54 @@ class BaseConv(nn.Module):
     def fuseforward(self, x):
         return self.act(self.conv(x))
 
+class shufflechannel_BaseConv(nn.Module):
+    """A Conv2d -> Batchnorm -> silu/leaky relu block"""
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 ksize,
+                 stride,
+                 groups=1,
+                 bias=False,
+                 act='silu'):
+        super().__init__()
+        self.groups = groups
+        # same padding
+        pad = (ksize - 1) // 2
+        self.conv = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=ksize,
+            stride=stride,
+            padding=pad,
+            groups=groups,
+            bias=bias,
+        )
+        self.bn = nn.BatchNorm2d(out_channels, momentum=0.03, eps=0.001)
+        self.act = get_activation(act, inplace=True)
+        
+    @staticmethod
+    def shuffle_channels(x, groups):
+        """shuffle channels of a 4-D Tensor"""
+        batch_size, channels, height, width = x.size()
+        assert channels % groups == 0
+        channels_per_group = channels // groups
+        # split into groups
+        x = x.view(batch_size, groups, channels_per_group,
+                height, width)
+        # transpose 1, 2 axis
+        x = x.transpose(1, 2).contiguous()
+        # reshape into orignal
+        x = x.view(batch_size, channels, height, width)
+        return x
+    
+    def forward(self, x):
+        return self.act(self.bn(self.conv(self.shuffle_channels(x, groups=self.groups))))
+
+    def fuseforward(self, x):
+        return self.act(self.conv(x))
+
 
 class ASFF(nn.Module):
 
@@ -99,6 +147,7 @@ class ASFF(nn.Module):
                  multiplier=1,
                  use_carafe=False,
                  use_softpool=False,
+                 use_two_group_expand=False,
                  act='silu'):
         """
         Args:
@@ -114,6 +163,7 @@ class ASFF(nn.Module):
         self.use_carafe = use_carafe
         self.use_softpool = use_softpool
         self.groups = groups
+        self.use_two_group_expand = use_two_group_expand
         if self.type == 'ASFF-X':
             self.dim = [
                 int(1280 * multiplier),
@@ -180,9 +230,13 @@ class ASFF(nn.Module):
                 self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         
         # add expand layer
-        self.expand = Conv(
-            self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act)
-
+        if self.use_two_group_expand:
+            self.expand = nn.Sequential(
+                Conv(self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act), 
+                shufflechannel_BaseConv(self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act))
+        else:
+            self.expand = Conv(self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act)
+            
         self.weight_level_0 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
         self.weight_level_1 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
         self.weight_level_2 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
@@ -361,7 +415,7 @@ class ASFF(nn.Module):
 
 @MODELS.register_module()
 class TinyASFFNeck(nn.Module):
-    def __init__(self, widen_factor, use_att='ASFF', groups=1, use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
+    def __init__(self, widen_factor, use_att='ASFF', groups=1, use_two_group_expand=False, use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
         super().__init__()
         self.asff_1 = ASFF(
             level=0,
@@ -372,6 +426,7 @@ class TinyASFFNeck(nn.Module):
             multiplier=widen_factor,
             use_carafe=use_carafe,
             use_softpool=use_softpool,
+            use_two_group_expand=use_two_group_expand,
             act=act,
         )
         self.asff_2 = ASFF(
@@ -383,6 +438,7 @@ class TinyASFFNeck(nn.Module):
             multiplier=widen_factor,
             use_carafe=use_carafe,
             use_softpool=use_softpool,
+            use_two_group_expand=use_two_group_expand,
             act=act,
         )
         self.asff_3 = ASFF(
@@ -394,6 +450,7 @@ class TinyASFFNeck(nn.Module):
             multiplier=widen_factor,
             use_carafe=use_carafe,
             use_softpool=use_softpool,
+            use_two_group_expand=use_two_group_expand,
             act=act,
         )
         self.asff_4 = ASFF(
@@ -405,6 +462,7 @@ class TinyASFFNeck(nn.Module):
             multiplier=widen_factor,
             use_carafe=use_carafe,
             use_softpool=use_softpool,
+            use_two_group_expand=use_two_group_expand,
             act=act,
         )
 
@@ -418,7 +476,7 @@ class TinyASFFNeck(nn.Module):
 
 if __name__ == '__main__':
     input=[torch.randn(1,64,160,160), torch.randn(1,128,80,80), torch.randn(1,256,40,40), torch.randn(1,512,20,20)]
-    model = TinyASFFNeck(use_att='ASFF', groups=4, widen_factor=0.5, use_softpool=False, use_carafe=False)
+    model = TinyASFFNeck(use_att='TinyASFF', groups=4, use_two_group_expand=True, widen_factor=0.5, use_softpool=False, use_carafe=False)
     output = model(input)
     # print(output.shape)
     from fvcore.nn import FlopCountAnalysis

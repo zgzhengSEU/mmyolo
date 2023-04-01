@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "TinyASFF"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinyCEASFF"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPF-g16"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -82,27 +82,17 @@ model = dict(
     #             cfg=dict(type='CBAM'),
     #             stages=(True, True, True, True))
     #     ]),    
-    neck=[
-        dict(
-            use_carafe=False,
-            type='YOLOv7PAFPN4',
-            upsample_feats_cat_first=False,
-            norm_cfg=norm_cfg,
-            is_tiny_version=True,
-            in_channels=[64, 128, 256, 512],
-            out_channels=[32, 64, 128, 256], # 4 层时不会*2
-            block_cfg=dict(
-                type='TinyDownSampleBlock', middle_ratio=0.25),
-            act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-            # act_cfg=dict(type='SiLU', inplace=True),
-            use_repconv_outs=False),
-        dict(
-            type='TinyASFFNeck',
-            widen_factor=0.5,
-            groups=1,
-            use_two_group_expand=False,
-            use_carafe=True,
-            use_att='TinyASFF')],
+    neck=dict(
+        type='YOLOv7PAFPN4',
+        use_carafe=False,
+        is_tiny_version=True,
+        in_channels=[64, 128, 256, 512],
+        out_channels=[32, 64, 128, 256],
+        sppf_groups=16,
+        block_cfg=dict(
+            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(
             in_channels = [64, 128, 256, 512],
