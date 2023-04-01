@@ -93,6 +93,7 @@ class ASFF(nn.Module):
     def __init__(self,
                  level,
                  type='ASFF',
+                 groups = 1,
                  asff_channel=2,
                  expand_kernel=3,
                  multiplier=1,
@@ -112,6 +113,7 @@ class ASFF(nn.Module):
         self.type = type
         self.use_carafe = use_carafe
         self.use_softpool = use_softpool
+        self.groups = groups
         if self.type == 'ASFF-X':
             self.dim = [
                 int(1280 * multiplier),
@@ -133,26 +135,26 @@ class ASFF(nn.Module):
 
         if self.type == 'ASFF':
             if level == 0:
-                self.stride_level_1 = Conv(int(512 * multiplier), self.inter_dim, 3, 2, act=act)
-                self.stride_level_2 = Conv(int(256 * multiplier), self.inter_dim, 3, 2, act=act)
-                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.stride_level_1 = Conv(int(512 * multiplier), self.inter_dim, 3, 2, groups=self.groups, act=act)
+                self.stride_level_2 = Conv(int(256 * multiplier), self.inter_dim, 3, 2, groups=self.groups, act=act)
+                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, groups=self.groups, act=act)
             elif level == 1:
-                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, groups=self.groups, act=act)
                 self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
-                self.stride_level_2 = Conv(int(256 * multiplier), self.inter_dim, 3, 2, act=act)
-                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.stride_level_2 = Conv(int(256 * multiplier), self.inter_dim, 3, 2, groups=self.groups, act=act)
+                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, groups=self.groups, act=act)
             elif level == 2:
-                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, groups=self.groups, act=act)
                 self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=4) if self.use_carafe else nn.Upsample(scale_factor=4)
-                self.compress_level_1 = Conv(int(512 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.compress_level_1 = Conv(int(512 * multiplier), self.inter_dim, 1, 1, groups=self.groups, act=act)
                 self.upsample_level_1 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
-                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, act=act)
+                self.stride_level_3 = Conv(int(128 * multiplier), self.inter_dim, 3, 2, groups=self.groups, act=act)
             elif level == 3:
-                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.compress_level_0 = Conv(int(1024 * multiplier), self.inter_dim, 1, 1, groups=self.groups, act=act)
                 self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=8) if self.use_carafe else nn.Upsample(scale_factor=8)
-                self.compress_level_1 = Conv(int(512 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.compress_level_1 = Conv(int(512 * multiplier), self.inter_dim, 1, 1, groups=self.groups, act=act)
                 self.upsample_level_1 = CARAFEPack(channels=self.inter_dim, scale_factor=4) if self.use_carafe else nn.Upsample(scale_factor=4)
-                self.compress_level_2 = Conv(int(256 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.compress_level_2 = Conv(int(256 * multiplier), self.inter_dim, 1, 1, groups=self.groups, act=act)
                 self.upsample_level_2 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
             else:
                 raise ValueError('Invalid level {}'.format(level))
@@ -179,7 +181,7 @@ class ASFF(nn.Module):
         
         # add expand layer
         self.expand = Conv(
-            self.inter_dim, self.inter_dim, expand_kernel, 1, act=act)
+            self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act)
 
         self.weight_level_0 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
         self.weight_level_1 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
@@ -359,11 +361,12 @@ class ASFF(nn.Module):
 
 @MODELS.register_module()
 class TinyASFFNeck(nn.Module):
-    def __init__(self, widen_factor, use_att='ASFF', use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
+    def __init__(self, widen_factor, use_att='ASFF', groups=1, use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
         super().__init__()
         self.asff_1 = ASFF(
             level=0,
             type=use_att,
+            groups=groups,
             asff_channel=asff_channel,
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
@@ -374,6 +377,7 @@ class TinyASFFNeck(nn.Module):
         self.asff_2 = ASFF(
             level=1,
             type=use_att,
+            groups=groups,
             asff_channel=asff_channel,
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
@@ -384,6 +388,7 @@ class TinyASFFNeck(nn.Module):
         self.asff_3 = ASFF(
             level=2,
             type=use_att,
+            groups=groups,
             asff_channel=asff_channel,
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
@@ -394,6 +399,7 @@ class TinyASFFNeck(nn.Module):
         self.asff_4 = ASFF(
             level=3,
             type=use_att,
+            groups=groups,
             asff_channel=asff_channel,
             expand_kernel=expand_kernel,
             multiplier=widen_factor,
@@ -411,16 +417,16 @@ class TinyASFFNeck(nn.Module):
         return outputs
 
 if __name__ == '__main__':
-    input=[torch.randn(1,128,160,160), torch.randn(1,256,80,80), torch.randn(1,512,40,40), torch.randn(1,1024,20,20)]
-    model = TinyASFFNeck(widen_factor=1, use_softpool=True, use_carafe=False)
+    input=[torch.randn(1,64,160,160), torch.randn(1,128,80,80), torch.randn(1,256,40,40), torch.randn(1,512,20,20)]
+    model = TinyASFFNeck(use_att='ASFF', groups=4, widen_factor=0.5, use_softpool=False, use_carafe=False)
     output = model(input)
     # print(output.shape)
     from fvcore.nn import FlopCountAnalysis
     from fvcore.nn import flop_count_table
     from fvcore.nn import flop_count_str
-    # flops = FlopCountAnalysis(model, input)
-    # print(f'input shape: {input[0].shape}')
-    # print(flop_count_table(flops))
+    flops = FlopCountAnalysis(model, input)
+    print(f'input shape: {input[0].shape}')
+    print(flop_count_table(flops))
     # print(flop_count_str(flops))
     # input = torch.randn(1, 10, 41, 41)
     # out = F.max_pool2d(input, 3, stride=2, padding=1)

@@ -97,6 +97,7 @@ model = dict(
         dict(
             type='TinyASFFNeck',
             widen_factor=0.5,
+            groups=1,
             use_carafe=True,
             use_att='TinyASFF')],
     bbox_head=dict(

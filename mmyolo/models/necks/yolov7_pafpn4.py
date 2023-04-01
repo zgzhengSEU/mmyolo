@@ -6,7 +6,7 @@ from mmcv.cnn import ConvModule
 from mmdet.utils import ConfigType, OptMultiConfig
 
 from mmyolo.registry import MODELS
-from ..layers import MaxPoolAndStrideConvBlock, RepVGGBlock, SPPFCSPBlock
+from ..layers import MaxPoolAndStrideConvBlock, RepVGGBlock, SPPFCSPBlock, TinySPPFCSPBlock
 from .base_yolo_neck import BaseYOLONeck
 from mmcv.ops.carafe import CARAFEPack
 # from carafe import CARAFEPack
@@ -62,6 +62,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                  use_in_channels_in_downsample: bool = False,
                  use_repconv_outs: bool = True,
                  use_carafe: bool = False,
+                 sppf_groups: int = 1,
                  upsample_feats_cat_first: bool = False,
                  freeze_all: bool = False,
                  norm_cfg: ConfigType = dict(
@@ -78,6 +79,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
         self.block_cfg.setdefault('norm_cfg', norm_cfg)
         self.block_cfg.setdefault('act_cfg', act_cfg)
         self.use_carafe = use_carafe
+        self.sppf_groups = sppf_groups
         super().__init__(
             in_channels=[
                 int(channel * widen_factor) for channel in in_channels
@@ -110,9 +112,10 @@ class YOLOv7PAFPN4(BaseYOLONeck):
             nn.Module: The reduce layer.
         """
         if idx == len(self.in_channels) - 1:
-            layer = SPPFCSPBlock(
+            layer = TinySPPFCSPBlock(
                 self.in_channels[idx],
                 self.out_channels[idx],
+                groups=self.sppf_groups,
                 expand_ratio=self.spp_expand_ratio,
                 is_tiny_version=self.is_tiny_version,
                 kernel_sizes=5,

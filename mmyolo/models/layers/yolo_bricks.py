@@ -1508,3 +1508,187 @@ class CSPLayerWithTwoConv(BaseModule):
         x_main = list(x_main.split((self.mid_channels, self.mid_channels), 1))
         x_main.extend(blocks(x_main[-1]) for blocks in self.blocks)
         return self.final_conv(torch.cat(x_main, 1))
+
+@MODELS.register_module()
+class TinySPPFCSPBlock(BaseModule):
+    """Spatial pyramid pooling - Fast (SPPF) layer with CSP for
+     YOLOv7
+
+     Args:
+         in_channels (int): The input channels of this Module.
+         out_channels (int): The output channels of this Module.
+         expand_ratio (float): Expand ratio of SPPCSPBlock.
+            Defaults to 0.5.
+         kernel_sizes (int, tuple[int]): Sequential or number of kernel
+             sizes of pooling layers. Defaults to 5.
+         is_tiny_version (bool): Is tiny version of SPPFCSPBlock. If True,
+            it means it is a yolov7 tiny model. Defaults to False.
+         conv_cfg (dict): Config dict for convolution layer. Defaults to None.
+             which means using conv2d. Defaults to None.
+         norm_cfg (dict): Config dict for normalization layer.
+             Defaults to dict(type='BN', momentum=0.03, eps=0.001).
+         act_cfg (dict): Config dict for activation layer.
+             Defaults to dict(type='SiLU', inplace=True).
+         init_cfg (dict or list[dict], optional): Initialization config dict.
+             Defaults to None.
+     """
+
+    def __init__(self,
+                 in_channels: int,
+                 out_channels: int,
+                 groups: int = 4,
+                 expand_ratio: float = 0.5,
+                 kernel_sizes: Union[int, Sequence[int]] = 5,
+                 is_tiny_version: bool = False,
+                 conv_cfg: OptConfigType = None,
+                 norm_cfg: ConfigType = dict(
+                     type='BN', momentum=0.03, eps=0.001),
+                 act_cfg: ConfigType = dict(type='SiLU', inplace=True),
+                 init_cfg: OptMultiConfig = None):
+        super().__init__(init_cfg=init_cfg)
+        self.is_tiny_version = is_tiny_version
+        self.groups = groups
+        mid_channels = int(2 * out_channels * expand_ratio)
+
+        if is_tiny_version:
+            self.main_layers = ConvModule(
+                in_channels,
+                mid_channels,
+                1,
+                groups=self.groups,
+                conv_cfg=conv_cfg,
+                norm_cfg=norm_cfg,
+                act_cfg=act_cfg)
+        else:
+            self.main_layers = nn.Sequential(
+                ConvModule(
+                    in_channels,
+                    mid_channels,
+                    1,
+                    conv_cfg=conv_cfg,
+                    norm_cfg=norm_cfg,
+                    act_cfg=act_cfg),
+                ConvModule(
+                    mid_channels,
+                    mid_channels,
+                    3,
+                    padding=1,
+                    conv_cfg=conv_cfg,
+                    norm_cfg=norm_cfg,
+                    act_cfg=act_cfg),
+                ConvModule(
+                    mid_channels,
+                    mid_channels,
+                    1,
+                    conv_cfg=conv_cfg,
+                    norm_cfg=norm_cfg,
+                    act_cfg=act_cfg),
+            )
+
+        self.kernel_sizes = kernel_sizes
+        if isinstance(kernel_sizes, int):
+            self.poolings = nn.MaxPool2d(
+                kernel_size=kernel_sizes, stride=1, padding=kernel_sizes // 2)
+        else:
+            self.poolings = nn.ModuleList([
+                nn.MaxPool2d(kernel_size=ks, stride=1, padding=ks // 2)
+                for ks in kernel_sizes
+            ])
+
+        if is_tiny_version:
+            self.fuse_layers = ConvModule(
+                4 * mid_channels,
+                mid_channels,
+                1,
+                groups=self.groups,
+                conv_cfg=conv_cfg,
+                norm_cfg=norm_cfg,
+                act_cfg=act_cfg)
+        else:
+            self.fuse_layers = nn.Sequential(
+                ConvModule(
+                    4 * mid_channels,
+                    mid_channels,
+                    1,
+                    conv_cfg=conv_cfg,
+                    norm_cfg=norm_cfg,
+                    act_cfg=act_cfg),
+                ConvModule(
+                    mid_channels,
+                    mid_channels,
+                    3,
+                    padding=1,
+                    conv_cfg=conv_cfg,
+                    norm_cfg=norm_cfg,
+                    act_cfg=act_cfg))
+
+        self.short_layer = ConvModule(
+            in_channels,
+            mid_channels,
+            1,
+            groups=self.groups,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
+            act_cfg=act_cfg)
+
+        self.final_conv = ConvModule(
+            2 * mid_channels,
+            out_channels,
+            1,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
+            act_cfg=act_cfg)
+    @staticmethod
+    def shuffle_channels(x, groups):
+        """shuffle channels of a 4-D Tensor"""
+        batch_size, channels, height, width = x.size()
+        assert channels % groups == 0
+        channels_per_group = channels // groups
+        # split into groups
+        x = x.view(batch_size, groups, channels_per_group,
+                height, width)
+        # transpose 1, 2 axis
+        x = x.transpose(1, 2).contiguous()
+        # reshape into orignal
+        x = x.view(batch_size, channels, height, width)
+        return x
+    
+    def forward(self, x) -> Tensor:
+        """Forward process
+        Args:
+            x (Tensor): The input tensor.
+        """
+        x1 = self.main_layers(x)
+        x1 = self.shuffle_channels(x1, self.groups)
+        if isinstance(self.kernel_sizes, int):
+            y1 = self.poolings(x1)
+            y2 = self.poolings(y1)
+            concat_list = [x1] + [y1, y2, self.poolings(y2)]
+            if self.is_tiny_version:
+                x1 = self.fuse_layers(torch.cat(concat_list[::-1], 1))
+            else:
+                x1 = self.fuse_layers(torch.cat(concat_list, 1))
+        else:
+            concat_list = [x1] + [m(x1) for m in self.poolings]
+            if self.is_tiny_version:
+                x1 = self.fuse_layers(torch.cat(concat_list[::-1], 1))
+            else:
+                x1 = self.fuse_layers(torch.cat(concat_list, 1))
+
+        x2 = self.short_layer(x)
+        return self.final_conv(torch.cat((x1, x2), dim=1))
+
+
+if __name__ == '__main__':
+    input = torch.randn(1, 512, 20, 20)
+    model1 = TinySPPFCSPBlock(in_channels=512, out_channels=256, is_tiny_version=True, groups=4)
+    model2 = SPPFCSPBlock(in_channels=512, out_channels=256, is_tiny_version=True)
+    from fvcore.nn import FlopCountAnalysis
+    from fvcore.nn import flop_count_table
+    from fvcore.nn import flop_count_str
+    flops1 = FlopCountAnalysis(model1, input)
+    flops2 = FlopCountAnalysis(model2, input)
+    print(f'input shape: {input[0].shape}')
+    # print(str(flop_count_table(flops1)) == str(flop_count_table(flops2)))
+    print(flop_count_table(flops1))
+    # print(flop_count_str(flops1))

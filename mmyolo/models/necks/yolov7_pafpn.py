@@ -6,7 +6,7 @@ from mmcv.cnn import ConvModule
 from mmdet.utils import ConfigType, OptMultiConfig
 
 from mmyolo.registry import MODELS
-from ..layers import MaxPoolAndStrideConvBlock, RepVGGBlock, SPPFCSPBlock
+from ..layers import MaxPoolAndStrideConvBlock, RepVGGBlock, SPPFCSPBlock, TinySPPFCSPBlock
 from .base_yolo_neck import BaseYOLONeck
 
 
@@ -55,6 +55,7 @@ class YOLOv7PAFPN(BaseYOLONeck):
                      num_convs_in_block=1),
                  deepen_factor: float = 1.0,
                  widen_factor: float = 1.0,
+                 sppf_groups: int = 1,
                  spp_expand_ratio: float = 0.5,
                  is_tiny_version: bool = False,
                  use_maxpool_in_downsample: bool = True,
@@ -75,7 +76,8 @@ class YOLOv7PAFPN(BaseYOLONeck):
         self.block_cfg = block_cfg
         self.block_cfg.setdefault('norm_cfg', norm_cfg)
         self.block_cfg.setdefault('act_cfg', act_cfg)
-
+        self.sppf_groups = sppf_groups
+        
         super().__init__(
             in_channels=[
                 int(channel * widen_factor) for channel in in_channels
@@ -101,12 +103,13 @@ class YOLOv7PAFPN(BaseYOLONeck):
             nn.Module: The reduce layer.
         """
         if idx == len(self.in_channels) - 1:
-            layer = SPPFCSPBlock(
+            layer = TinySPPFCSPBlock(
                 self.in_channels[idx],
                 self.out_channels[idx],
                 expand_ratio=self.spp_expand_ratio,
                 is_tiny_version=self.is_tiny_version,
                 kernel_sizes=5,
+                groups=self.sppf_groups,
                 norm_cfg=self.norm_cfg,
                 act_cfg=self.act_cfg)
         else:
