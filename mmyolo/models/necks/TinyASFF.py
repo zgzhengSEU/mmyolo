@@ -412,66 +412,279 @@ class ASFF(nn.Module):
 
         return out
 
+class TinyASFF3(nn.Module):
 
+    def __init__(self,
+                 level,
+                 type='ASFF',
+                 asff_channel=2,
+                 expand_kernel=3,
+                 multiplier=1,
+                 use_carafe=False,
+                 act='silu'):
+        """
+        Args:
+            level(int): the level of the input feature
+            type(str): ASFF or ASFF_sim
+            asff_channel(int): the hidden channel of the attention layer in ASFF
+            expand_kernel(int): expand kernel size of the expand layer
+            multiplier: should be the same as width in the backbone
+        """
+        super(TinyASFF3, self).__init__()
+        self.level = level
+        self.type = type
+        self.use_carafe = use_carafe
+        
+        self.dim = [
+            int(1024 * multiplier), # 512
+            int(512 * multiplier), # 256
+            int(256 * multiplier) # 128
+        ]
+
+        Conv = BaseConv
+
+        self.inter_dim = self.dim[self.level]
+
+        if self.type == 'ASFF':
+            if level == 0:
+                self.stride_level_1 = Conv( # 256 * 512 /2
+                    int(512 * multiplier), self.inter_dim, 3, 2, act=act)
+
+                self.stride_level_2 = Conv( # 128 * 512 /2
+                    int(256 * multiplier), self.inter_dim, 3, 2, act=act)
+
+            elif level == 1:
+                self.compress_level_0 = Conv( # 512 * 256 /1
+                    int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
+                self.stride_level_2 = Conv( # 128 * 256 /2
+                    int(256 * multiplier), self.inter_dim, 3, 2, act=act)
+
+            elif level == 2:
+                self.compress_level_0 = Conv( # 512 * 128 /1
+                    int(1024 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_0 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=4)
+                self.compress_level_1 = Conv( # 256 * 128 /1
+                    int(512 * multiplier), self.inter_dim, 1, 1, act=act)
+                self.upsample_level_1 = CARAFEPack(channels=self.inter_dim, scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
+            else:
+                raise ValueError('Invalid level {}'.format(level))
+        else:
+            if level == 0:
+                pass
+            elif level == 1:
+                self.level_0_upsample = CARAFEPack(channels=self.dim[0], scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
+            elif level == 2:
+                self.level_0_upsample = CARAFEPack(channels=self.dim[0], scale_factor=4) if self.use_carafe else nn.Upsample(scale_factor=4)
+                self.level_1_upsample = CARAFEPack(channels=self.dim[1], scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2)
+            else:
+                raise ValueError('Invalid level {}'.format(level))
+            
+        # add expand layer
+        self.expand = Conv( 
+            self.inter_dim, self.inter_dim, expand_kernel, 1, act=act)
+
+        self.weight_level_0 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
+        self.weight_level_1 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
+        self.weight_level_2 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
+
+        self.weight_levels = Conv(asff_channel * 3, 3, 1, 1, act=act)
+
+    def expand_channel(self, x):
+        # [b,c,h,w]->[b,c*4,h/2,w/2]
+        patch_top_left = x[..., ::2, ::2]
+        patch_top_right = x[..., ::2, 1::2]
+        patch_bot_left = x[..., 1::2, ::2]
+        patch_bot_right = x[..., 1::2, 1::2]
+        x = torch.cat(
+            (
+                patch_top_left,
+                patch_bot_left,
+                patch_top_right,
+                patch_bot_right,
+            ),
+            dim=1,
+        )
+        return x
+
+    def mean_channel(self, x):
+        # [b,c,h,w]->[b,c/4,h*2,w*2]
+        x1 = x[:, ::2, :, :]
+        x2 = x[:, 1::2, :, :]
+        return (x1 + x2) / 2
+
+    def forward(self, x):  # l,m,s
+        """
+        #
+        256, 512, 1024
+        from small -> large
+        """
+        x_level_0 = x[2]  # max feature level [512,20,20]
+        x_level_1 = x[1]  # mid feature level [256,40,40]
+        x_level_2 = x[0]  # min feature level [128,80,80]
+
+        if self.type == 'ASFF':
+            if self.level == 0:
+                level_0_resized = x_level_0 # 512,20,20
+                level_1_resized = self.stride_level_1(x_level_1) # 256,40,40 -> 256 * 512 / 2 -> 512,20,20
+                level_2_downsampled_inter = F.max_pool2d( # 128,80,80 -> maxpool /2 -> 128,40,40
+                    x_level_2, 3, stride=2, padding=1)
+                level_2_resized = self.stride_level_2( # 128,40,40 -> 128 * 512 /2 -> 512,20,20
+                    level_2_downsampled_inter)
+            elif self.level == 1:
+                level_0_compressed = self.compress_level_0(x_level_0) # 512,20,20 -> 512 * 256 /1 -> 256,20,20
+                level_0_resized = self.upsample_level_0(level_0_compressed)
+                level_1_resized = x_level_1 # 256,40,40
+                level_2_resized = self.stride_level_2(x_level_2) # 128,80,80 -> 128 * 256 /2 -> 256,40,40
+            elif self.level == 2:
+                level_0_compressed = self.compress_level_0(x_level_0)
+                level_0_resized = F.interpolate(
+                    level_0_compressed, scale_factor=4, mode='nearest')
+                level_1_compressed = self.compress_level_1(x_level_1)
+                level_1_resized = self.upsample_level_1(level_1_compressed)
+                level_2_resized = x_level_2
+        else:
+            if self.level == 0:
+                level_0_resized = x_level_0
+                level_1_resized = self.expand_channel(x_level_1)
+                level_1_resized = self.mean_channel(level_1_resized)
+                level_2_resized = self.expand_channel(x_level_2)
+                level_2_resized = F.max_pool2d(
+                    level_2_resized, 3, stride=2, padding=1)
+            elif self.level == 1:
+                level_0_resized = self.level_0_upsample(x_level_0)
+                level_0_resized = self.mean_channel(level_0_resized)
+                level_1_resized = x_level_1
+                level_2_resized = self.expand_channel(x_level_2)
+                level_2_resized = self.mean_channel(level_2_resized)
+
+            elif self.level == 2:
+                level_0_resized = self.level_0_upsample(x_level_0)
+                level_0_resized = self.mean_channel(
+                    self.mean_channel(level_0_resized))
+                level_1_resized = self.level_1_upsample(x_level_1)
+                level_1_resized = self.mean_channel(level_1_resized)
+                level_2_resized = x_level_2
+
+        level_0_weight_v = self.weight_level_0(level_0_resized)
+        level_1_weight_v = self.weight_level_1(level_1_resized)
+        level_2_weight_v = self.weight_level_2(level_2_resized)
+
+        levels_weight_v = torch.cat(
+            (level_0_weight_v, level_1_weight_v, level_2_weight_v), 1)
+        levels_weight = self.weight_levels(levels_weight_v)
+        levels_weight = F.softmax(levels_weight, dim=1)
+
+        fused_out_reduced = level_0_resized * levels_weight[:, 0:
+                                                               1, :, :] + level_1_resized * levels_weight[:,
+                                                                                            1:
+                                                                                            2, :,
+                                                                                            :] + level_2_resized * levels_weight[
+                                                                                                                   :,
+                                                                                                                   2:,
+                                                                                                                   :, :]
+        out = self.expand(fused_out_reduced)
+
+        return out
+    
+    
 @MODELS.register_module()
 class TinyASFFNeck(nn.Module):
-    def __init__(self, widen_factor, use_att='ASFF', groups=1, use_two_group_expand=False, use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
+    def __init__(self, widen_factor, head_num=4, use_att='ASFF', groups=1, use_two_group_expand=False, use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
         super().__init__()
-        self.asff_1 = ASFF(
-            level=0,
-            type=use_att,
-            groups=groups,
-            asff_channel=asff_channel,
-            expand_kernel=expand_kernel,
-            multiplier=widen_factor,
-            use_carafe=use_carafe,
-            use_softpool=use_softpool,
-            use_two_group_expand=use_two_group_expand,
-            act=act,
-        )
-        self.asff_2 = ASFF(
-            level=1,
-            type=use_att,
-            groups=groups,
-            asff_channel=asff_channel,
-            expand_kernel=expand_kernel,
-            multiplier=widen_factor,
-            use_carafe=use_carafe,
-            use_softpool=use_softpool,
-            use_two_group_expand=use_two_group_expand,
-            act=act,
-        )
-        self.asff_3 = ASFF(
-            level=2,
-            type=use_att,
-            groups=groups,
-            asff_channel=asff_channel,
-            expand_kernel=expand_kernel,
-            multiplier=widen_factor,
-            use_carafe=use_carafe,
-            use_softpool=use_softpool,
-            use_two_group_expand=use_two_group_expand,
-            act=act,
-        )
-        self.asff_4 = ASFF(
-            level=3,
-            type=use_att,
-            groups=groups,
-            asff_channel=asff_channel,
-            expand_kernel=expand_kernel,
-            multiplier=widen_factor,
-            use_carafe=use_carafe,
-            use_softpool=use_softpool,
-            use_two_group_expand=use_two_group_expand,
-            act=act,
-        )
-
+        self.head_num = head_num
+        if self.head_num == 4:
+            self.asff_1 = ASFF(
+                level=0,
+                type=use_att,
+                groups=groups,
+                asff_channel=asff_channel,
+                expand_kernel=expand_kernel,
+                multiplier=widen_factor,
+                use_carafe=use_carafe,
+                use_softpool=use_softpool,
+                use_two_group_expand=use_two_group_expand,
+                act=act,
+            )
+            self.asff_2 = ASFF(
+                level=1,
+                type=use_att,
+                groups=groups,
+                asff_channel=asff_channel,
+                expand_kernel=expand_kernel,
+                multiplier=widen_factor,
+                use_carafe=use_carafe,
+                use_softpool=use_softpool,
+                use_two_group_expand=use_two_group_expand,
+                act=act,
+            )
+            self.asff_3 = ASFF(
+                level=2,
+                type=use_att,
+                groups=groups,
+                asff_channel=asff_channel,
+                expand_kernel=expand_kernel,
+                multiplier=widen_factor,
+                use_carafe=use_carafe,
+                use_softpool=use_softpool,
+                use_two_group_expand=use_two_group_expand,
+                act=act,
+            )
+            self.asff_4 = ASFF(
+                level=3,
+                type=use_att,
+                groups=groups,
+                asff_channel=asff_channel,
+                expand_kernel=expand_kernel,
+                multiplier=widen_factor,
+                use_carafe=use_carafe,
+                use_softpool=use_softpool,
+                use_two_group_expand=use_two_group_expand,
+                act=act,
+            )
+        elif self.head_num == 3:
+            self.asff_1 = TinyASFF3(
+                level=0,
+                type=use_att,
+                asff_channel=asff_channel,
+                expand_kernel=expand_kernel,
+                multiplier=widen_factor,
+                use_carafe=use_carafe,
+                act=act,
+            )
+            self.asff_2 = TinyASFF3(
+                level=1,
+                type=use_att,
+                asff_channel=asff_channel,
+                expand_kernel=expand_kernel,
+                multiplier=widen_factor,
+                use_carafe=use_carafe,
+                act=act,
+            )
+            self.asff_3 = TinyASFF3(
+                level=2,
+                type=use_att,
+                asff_channel=asff_channel,
+                expand_kernel=expand_kernel,
+                multiplier=widen_factor,
+                use_carafe=use_carafe,
+                act=act,
+            )
+        else:
+                raise ValueError('Invalid head num {}'.format(self.head_num))
+            
     def forward(self, x):
-        pan_out0 = self.asff_1(x)
-        pan_out1 = self.asff_2(x)
-        pan_out2 = self.asff_3(x)
-        pan_out3 = self.asff_4(x)
-        outputs = (pan_out3, pan_out2, pan_out1, pan_out0)
+        if self.head_num == 4:
+            pan_out0 = self.asff_1(x)
+            pan_out1 = self.asff_2(x)
+            pan_out2 = self.asff_3(x)
+            pan_out3 = self.asff_4(x)
+            outputs = (pan_out3, pan_out2, pan_out1, pan_out0)
+        elif self.head_num == 3:
+            pan_out0 = self.asff_1(x)
+            pan_out1 = self.asff_2(x)
+            pan_out2 = self.asff_3(x)
+            outputs = (pan_out2, pan_out1, pan_out0)
         return outputs
 
 if __name__ == '__main__':

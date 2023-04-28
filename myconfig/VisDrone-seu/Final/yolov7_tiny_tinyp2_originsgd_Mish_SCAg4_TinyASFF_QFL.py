@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", 'CEPAFPN', 'SCA', 'TinyASFF']
+TAGS = ["SEU", "load", "tinyp2","originsgd", 'SCA', 'TinyASFF', 'Mish', "QFL"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF"
+ALGO_NAME = "yolov7_tiny_tinyp2_originsgd_Mish_SCAg4_TinyASFF_QFL"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -18,7 +18,6 @@ visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='Wandb
 import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
-# checkpoint = 'https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth'  # noqa
 load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
 # ========================modified parameters========================
 num_det_layers = 4
@@ -72,11 +71,12 @@ model = dict(
     backbone=dict(
         plugins=[
             dict(
-                cfg=dict(type='ShuffleCoordAttention', groups=8),
+                cfg=dict(type='ShuffleCoordAttention', groups=4),
+                act_cfg=dict(type='Mish', inplace=True),
                 stages=(True, True, True, True))
         ],
         arch='Tiny', 
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        act_cfg=dict(type='Mish', inplace=True),
         out_indices=(1, 2, 3, 4)),  
     neck=[
         dict(
@@ -89,8 +89,7 @@ model = dict(
             out_channels=[32, 64, 128, 256], # 4 层时不会*2
             block_cfg=dict(
                 type='TinyDownSampleBlock', middle_ratio=0.25),
-            act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-            # act_cfg=dict(type='SiLU', inplace=True),
+            act_cfg=dict(type='Mish', inplace=True),
             use_repconv_outs=False),
         dict(
             type='TinyASFFNeck',
@@ -103,9 +102,13 @@ model = dict(
             featmap_strides=strides),
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
-        loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
         loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
-        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
+        # loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
+        loss_cls= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=1.0),
+        loss_obj= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=1.0)
+        # loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))
+    )
+)
 
 mosiac4_pipeline = [
     dict(
@@ -165,30 +168,5 @@ train_pipeline = [
 train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
-
-base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
-# base_lr = _base_.base_lr
-weight_decay = _base_.weight_decay
-
-# optim_wrapper = dict(
-#     type='OptimWrapper',
-#     optimizer=dict(
-#         type='SGD',
-#         lr=base_lr,
-#         momentum=0.937,
-#         weight_decay=weight_decay,
-#         nesterov=True,
-#         batch_size_per_gpu=train_batch_size_per_gpu),
-#     constructor='YOLOv7OptimWrapperConstructor')
-
-# SGD -> AdamW
-base_lr = 0.004
-optim_wrapper = dict(
-    _delete_=True,
-    type='OptimWrapper',
-    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
-    paramwise_cfg=dict(
-        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
-
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))

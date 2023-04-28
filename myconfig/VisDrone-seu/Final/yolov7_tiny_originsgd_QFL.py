@@ -13,7 +13,7 @@ Wandb_init_kwargs = dict(
     tags=TAGS,
     mode="offline"
 )
-# visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
+visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
 import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -42,7 +42,7 @@ origin_anchors = [
 anchors = VisDrone_anchors_v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 1
+train_batch_size_per_gpu = 64
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
