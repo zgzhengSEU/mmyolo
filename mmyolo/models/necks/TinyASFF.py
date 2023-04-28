@@ -489,7 +489,16 @@ class TinyASFF3(nn.Module):
         self.weight_level_2 = Conv(self.inter_dim, asff_channel, 1, 1, act=act)
 
         self.weight_levels = Conv(asff_channel * 3, 3, 1, 1, act=act)
-
+        
+        
+    def init_weights(self):
+        """Initialize the weights of module."""
+        super(TinyASFF3, self).init_weights()
+        for m in self.modules():
+            if isinstance(m, CARAFEPack):
+                m.init_weights()
+                
+                
     def expand_channel(self, x):
         # [b,c,h,w]->[b,c*4,h/2,w/2]
         patch_top_left = x[..., ::2, ::2]
