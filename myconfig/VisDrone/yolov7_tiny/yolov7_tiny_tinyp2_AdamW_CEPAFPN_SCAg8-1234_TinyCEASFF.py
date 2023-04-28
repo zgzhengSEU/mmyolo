@@ -18,8 +18,8 @@ visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='Wandb
 import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
-
-load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
+checkpoint = 'https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth'  # noqa
+# load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
 # ========================modified parameters========================
 num_det_layers = 4
 loss_bbox_weight = 0.05
@@ -49,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 1
+train_batch_size_per_gpu = 64
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -77,7 +77,12 @@ model = dict(
         ],
         arch='Tiny', 
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        out_indices=(1, 2, 3, 4)),  
+        out_indices=(1, 2, 3, 4),
+        init_cfg=dict(
+            type='Pretrained',
+            prefix='backbone.',
+            checkpoint=checkpoint,
+            map_location='cpu')),  
     neck=[
         dict(
             use_carafe=True,

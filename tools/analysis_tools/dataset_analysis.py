@@ -381,9 +381,9 @@ def main():
     # 2.Prepare data
     # Drawing settings
     fig_all_set = {
-        'figsize': [35, 18],
-        'fontsize': int(10 - 0.08 * len(dataset.metainfo['classes'])),
-        'xticks_angle': 70,
+        'figsize': [15, 10],
+        'fontsize': int(8 - 0.08 * len(dataset.metainfo['classes'])),
+        'xticks_angle': 0,
         'out_name': cfg.dataset_type
     }
     fig_one_set = {

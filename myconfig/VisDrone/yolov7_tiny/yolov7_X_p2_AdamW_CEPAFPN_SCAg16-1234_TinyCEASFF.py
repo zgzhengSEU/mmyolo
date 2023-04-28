@@ -275,6 +275,22 @@ train_pipeline = [
                    'flip_direction'))
 ]
 
+train_pipeline_stage2 = [
+    dict(type='LoadImageFromFile', file_client_args=_base_.file_client_args),
+    dict(type='LoadAnnotations', with_bbox=True),
+    dict(
+        type='mmdet.RandomResize',
+        scale=img_scale,
+        ratio_range=(0.1, 2.0),
+        resize_type='mmdet.Resize',
+        keep_ratio=True),
+    dict(type='mmdet.RandomCrop', crop_size=img_scale),
+    dict(type='mmdet.YOLOXHSVRandomAug'),
+    dict(type='mmdet.RandomFlip', prob=0.5),
+    dict(type='mmdet.Pad', size=img_scale, pad_val=dict(img=(114, 114, 114))),
+    dict(type='mmdet.PackDetInputs')
+]
+
 train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     num_workers=train_num_workers,
@@ -325,7 +341,25 @@ val_dataloader = dict(
 
 test_dataloader = val_dataloader
 
-param_scheduler = None
+# learning rate
+lr_start_factor = 1.0e-5
+param_scheduler = [
+    dict(
+        type='LinearLR',
+        start_factor=lr_start_factor,
+        by_epoch=False,
+        begin=0,
+        end=1000),
+    dict(
+        # use cosine lr from 150 to 300 epoch
+        type='CosineAnnealingLR',
+        eta_min=base_lr * 0.05,
+        begin=max_epochs // 2,
+        end=max_epochs,
+        T_max=max_epochs // 2,
+        by_epoch=True,
+        convert_to_iter_based=True),
+]
 optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(type='AdamW', lr=0.004, weight_decay=0.05),
@@ -333,11 +367,6 @@ optim_wrapper = dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(
-    param_scheduler=dict(
-        type='YOLOv5ParamSchedulerHook',
-        scheduler_type='cosine',
-        lr_factor=lr_factor,  # note
-        max_epochs=max_epochs),
     checkpoint=dict(
         type='CheckpointHook',
         save_param_scheduler=False,
@@ -345,14 +374,20 @@ default_hooks = dict(
         save_best='auto',
         max_keep_ckpts=max_keep_ckpts))
 
+ema_momentum = 0.0002
+num_epochs_stage2=20
 custom_hooks = [
     dict(
         type='EMAHook',
         ema_type='ExpMomentumEMA',
-        momentum=0.0001,
+        momentum=0.0002,
         update_buffers=True,
         strict_load=False,
-        priority=49)
+        priority=49),
+    dict(
+        type='mmdet.PipelineSwitchHook',
+        switch_epoch=max_epochs - num_epochs_stage2,
+        switch_pipeline=train_pipeline_stage2)
 ]
 
 val_evaluator = dict(

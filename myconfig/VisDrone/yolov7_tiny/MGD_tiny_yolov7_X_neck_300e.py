@@ -3,7 +3,7 @@ _base_ = './yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF.py'
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "tinyp2","AdamW", 'CEPAFPN', 'SCA', 'TinyASFF']
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF_KD"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF_MGD"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -25,21 +25,18 @@ work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
 
 teacher_ckpt = '/home/gp.sc.cc.tohoku.ac.jp/duanct/openmmlab/mmyolo/runs/VisDrone/yolov7_X_p2_AdamW_CEPAFPN_SCAg16-1234_TinyCEASFF/20230331_120755/best_coco/bbox_mAP_epoch_284.pth'  # noqa: E501
 
-norm_cfg = dict(type='BN', affine=False, track_running_stats=False)
-
 model = dict(
-    _delete_=True,
     _scope_='mmrazor',
+    _delete_=True,
     type='FpnTeacherDistill',
     architecture=dict(
         cfg_path='mmyolo::VisDrone/yolov7_tiny/yolov7_tiny_tinyp2_AdamW_CEPAFPN_SCAg8-1234_TinyCEASFF.py'),
     teacher=dict(
-        cfg_path='mmyolo::VisDrone/yolov7_tiny/yolov7_X_p2_AdamW_CEPAFPN_SCAg16-1234_TinyCEASFF.py'),
+        cfg_path='mmyolo::VisDrone/yolov7_tiny/yolov7_X_p2_AdamW_CEPAFPN_SCAg16-1234_TinyCEASFF.py',
+        pretrained=False),
     teacher_ckpt=teacher_ckpt,
     distiller=dict(
         type='ConfigurableDistiller',
-        # `recorders` are used to record various intermediate results during
-        # the model forward.
         student_recorders=dict(
             fpn0=dict(type='ModuleOutputs', source='neck.0.out_layers.0.conv'),
             fpn1=dict(type='ModuleOutputs', source='neck.0.out_layers.1.conv'),
@@ -50,79 +47,70 @@ model = dict(
             fpn1=dict(type='ModuleOutputs', source='neck.0.out_layers.1.conv'),
             fpn2=dict(type='ModuleOutputs', source='neck.0.out_layers.2.conv'),
             fpn3=dict(type='ModuleOutputs', source='neck.0.out_layers.3.conv')),
-        # `connectors` are adaptive layers which usually map teacher's and
-        # students features to the same dimension.
         connectors=dict(
-                fpn0_s=dict(
-                    type='ConvModuleConnector',
-                    in_channel=64,
-                    out_channel=160,
-                    bias=False,
-                    norm_cfg=norm_cfg,
-                    act_cfg=None),
-                fpn0_t=dict(
-                    type='NormConnector', in_channels=160, norm_cfg=norm_cfg),
-                fpn1_s=dict(
-                    type='ConvModuleConnector',
-                    in_channel=128,
-                    out_channel=320,
-                    bias=False,
-                    norm_cfg=norm_cfg,
-                    act_cfg=None),
-                fpn1_t=dict(
-                    type='NormConnector', in_channels=320, norm_cfg=norm_cfg),
-                fpn2_s=dict(
-                    type='ConvModuleConnector',
-                    in_channel=256,
-                    out_channel=640,
-                    bias=False,
-                    norm_cfg=norm_cfg,
-                    act_cfg=None),
-                fpn2_t=dict(
-                    type='NormConnector', in_channels=640, norm_cfg=norm_cfg),
-                fpn3_s=dict(
-                    type='ConvModuleConnector',
-                    in_channel=512,
-                    out_channel=1280,
-                    bias=False,
-                    norm_cfg=norm_cfg,
-                    act_cfg=None),
-                fpn3_t=dict(
-                    type='NormConnector', in_channels=1280, norm_cfg=norm_cfg)),
+            s_fpn0_connector=dict(
+                type='MGDConnector',
+                student_channels=64,
+                teacher_channels=160,
+                lambda_mgd=0.65),
+            s_fpn1_connector=dict(
+                type='MGDConnector',
+                student_channels=128,
+                teacher_channels=320,
+                lambda_mgd=0.65),
+            s_fpn2_connector=dict(
+                type='MGDConnector',
+                student_channels=256,
+                teacher_channels=640,
+                lambda_mgd=0.65),
+            s_fpn3_connector=dict(
+                type='MGDConnector',
+                student_channels=512,
+                teacher_channels=1280,
+                lambda_mgd=0.65)),
         distill_losses=dict(
-            loss_fpn0=dict(type='ChannelWiseDivergence', loss_weight=1),
-            loss_fpn1=dict(type='ChannelWiseDivergence', loss_weight=1),
-            loss_fpn2=dict(type='ChannelWiseDivergence', loss_weight=1),
-            loss_fpn3=dict(type='ChannelWiseDivergence', loss_weight=1)),
-        # `loss_forward_mappings` are mappings between distill loss forward
-        # arguments and records.
+            loss_mgd_fpn0=dict(type='MGDLoss', alpha_mgd=0.00002),
+            loss_mgd_fpn1=dict(type='MGDLoss', alpha_mgd=0.00002),
+            loss_mgd_fpn2=dict(type='MGDLoss', alpha_mgd=0.00002),
+            loss_mgd_fpn3=dict(type='MGDLoss', alpha_mgd=0.00002)),
         loss_forward_mappings=dict(
-            loss_fpn0=dict(
+            loss_mgd_fpn0=dict(
                 preds_S=dict(
-                    from_student=True, recorder='fpn0', connector='fpn0_s'),
-                preds_T=dict(
-                    from_student=False, recorder='fpn0', connector='fpn0_t')),
-            loss_fpn1=dict(
+                    from_student=True,
+                    recorder='fpn0',
+                    connector='s_fpn0_connector'),
+                preds_T=dict(from_student=False, recorder='fpn0')),
+            loss_mgd_fpn1=dict(
                 preds_S=dict(
-                    from_student=True, recorder='fpn1', connector='fpn1_s'),
-                preds_T=dict(
-                    from_student=False, recorder='fpn1', connector='fpn1_t')),
-            loss_fpn2=dict(
+                    from_student=True,
+                    recorder='fpn1',
+                    connector='s_fpn1_connector'),
+                preds_T=dict(from_student=False, recorder='fpn1')),
+            loss_mgd_fpn2=dict(
                 preds_S=dict(
-                    from_student=True, recorder='fpn2', connector='fpn2_s'),
-                preds_T=dict(
-                    from_student=False, recorder='fpn2', connector='fpn2_t')),
-            loss_fpn3=dict(
+                    from_student=True,
+                    recorder='fpn2',
+                    connector='s_fpn2_connector'),
+                preds_T=dict(from_student=False, recorder='fpn2')),
+            loss_mgd_fpn3=dict(
                 preds_S=dict(
-                    from_student=True, recorder='fpn3', connector='fpn3_s'),
-                preds_T=dict(
-                    from_student=False, recorder='fpn3', connector='fpn3_t')))))
+                    from_student=True,
+                    recorder='fpn3',
+                    connector='s_fpn3_connector'),
+                preds_T=dict(from_student=False, recorder='fpn3')))))
 
 find_unused_parameters = True
 
-# ==============================
+val_cfg = dict(_delete_=True, type='mmrazor.SingleTeacherDistillValLoop')
+
+optimizer_config = dict(
+    _delete_=True, grad_clip=dict(max_norm=35, norm_type=2))
+
+# =============================
+
+
 # learning rate
-base_lr=0.01
+base_lr=0.004
 lr_start_factor = 1.0e-5
 max_epochs=300
 param_scheduler = [
@@ -142,13 +130,6 @@ param_scheduler = [
         by_epoch=True,
         convert_to_iter_based=True),
 ]
-
-optim_wrapper = dict(
-    _delete_=True,
-    type='OptimWrapper',
-    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
-    paramwise_cfg=dict(
-        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(
     _delete_=True,
