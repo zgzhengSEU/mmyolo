@@ -233,7 +233,7 @@ bsub -J install-carafe -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "
 
 bsub -J install-carafe -q gpu_v100 -gpu "num=1:mode=exclusive_process:aff=yes" "module load anaconda3 && source activate mmyolo && module load cuda-11.6 && module load gcc-7.5.0 && make install && make test"
 
-
+# ============================ Final ===================================
 
 
 

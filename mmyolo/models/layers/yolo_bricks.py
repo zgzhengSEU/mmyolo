@@ -30,6 +30,16 @@ else:
 
     MODELS.register_module(module=SiLU, name='SiLU')
 
+import torch.nn.functional as F
+class Mish(nn.Module):
+    def __init__(self, inplace=True):
+        super().__init__()
+        # print("Mish avtivation loaded...")
+
+    def forward(self,x):
+        return x *( torch.tanh(F.softplus(x)))
+MODELS.register_module(module=Mish, name='Mish')
+
 
 class SPPFBottleneck(BaseModule):
     """Spatial pyramid pooling - Fast (SPPF) layer for
