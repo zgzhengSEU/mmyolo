@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "yolov7_tiny", "sgd"]
+TAGS = ["SEU", "load", "yolov7_tiny", "AdamW", "Mish"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_originsgd"
+ALGO_NAME = "yolov7_tiny_AdamW_Mish"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -64,14 +64,14 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
-        arch='Tiny', act_cfg=dict(type='LeakyReLU', negative_slope=0.1)),
+        arch='Tiny', act_cfg=dict(type='Mish', inplace=True)),
     neck=dict(
         is_tiny_version=True,
         in_channels=[128, 256, 512],
         out_channels=[64, 128, 256],
         block_cfg=dict(
             _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
-        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        act_cfg=dict(type='Mish', inplace=True),
         use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(in_channels=[128, 256, 512]),
@@ -139,5 +139,13 @@ train_pipeline = [
 train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
+
+base_lr = 0.004
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))

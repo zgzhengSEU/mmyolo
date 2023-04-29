@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "yolov7_tiny", "sgd", "SCA"]
+TAGS = ["SEU", "load", "yolov7_tiny", "AdamW", "FL"]
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_originsgd_SCAg4"
+ALGO_NAME = "yolov7_tiny_AdamW_QFL"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -64,11 +64,6 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
-        plugins=[
-            dict(
-                cfg=dict(type='ShuffleCoordAttention', groups=4),
-                stages=(True, True, True, True))
-        ],
         arch='Tiny', act_cfg=dict(type='LeakyReLU', negative_slope=0.1)),
     neck=dict(
         is_tiny_version=True,
@@ -81,10 +76,12 @@ model = dict(
     bbox_head=dict(
         head_module=dict(in_channels=[128, 256, 512]),
         prior_generator=dict(base_sizes=anchors),
-        loss_cls=dict(loss_weight=loss_cls_weight *
-                      (num_classes / 80 * 3 / num_det_layers)),
-        loss_obj=dict(loss_weight=loss_obj_weight *
-                      ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
+        # loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
+        loss_cls= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=0.025),
+        loss_obj= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=1.0)
+        # loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))
+        )
+    )
 
 mosiac4_pipeline = [
     dict(
@@ -144,5 +141,13 @@ train_pipeline = [
 train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
+
+base_lr = 0.004
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
