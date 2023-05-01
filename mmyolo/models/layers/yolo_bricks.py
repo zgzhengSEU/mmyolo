@@ -1769,7 +1769,7 @@ class TinySPPFCSPBlock(BaseModule):
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
-                 groups: int = 4, # 
+                 sppf_groups: int = 4, # 
                  use_FReLU: bool = False,
                  expand_ratio: float = 0.5,
                  kernel_sizes: Union[int, Sequence[int]] = 5,
@@ -1781,7 +1781,7 @@ class TinySPPFCSPBlock(BaseModule):
                  init_cfg: OptMultiConfig = None):
         super().__init__(init_cfg=init_cfg)
         self.is_tiny_version = is_tiny_version
-        self.groups = groups #
+        self.sppf_groups = sppf_groups #
         self.use_FReLU = use_FReLU #
         mid_channels = int(2 * out_channels * expand_ratio)
 
@@ -1790,7 +1790,7 @@ class TinySPPFCSPBlock(BaseModule):
                 in_channels,
                 mid_channels,
                 1,
-                groups=self.groups,
+                groups=self.sppf_groups,
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg,
                 act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg)
@@ -1835,7 +1835,7 @@ class TinySPPFCSPBlock(BaseModule):
                 4 * mid_channels,
                 mid_channels,
                 1,
-                groups=self.groups,
+                groups=self.sppf_groups,
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg,
                 act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg)
@@ -1861,7 +1861,7 @@ class TinySPPFCSPBlock(BaseModule):
             in_channels,
             mid_channels,
             1,
-            groups=self.groups,
+            groups=self.sppf_groups,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
             act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg)
@@ -1870,7 +1870,7 @@ class TinySPPFCSPBlock(BaseModule):
             2 * mid_channels,
             out_channels,
             1,
-            groups=self.groups,
+            groups=self.sppf_groups,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
             act_cfg=dict(type='FReLU', inplace=True, in_channels=out_channels) if self.use_FReLU else act_cfg)
@@ -1897,8 +1897,8 @@ class TinySPPFCSPBlock(BaseModule):
         x1 = self.main_layers(x)
         
         # group
-        if self.groups > 1: 
-            x1 = self.shuffle_channels(x1, self.groups)
+        if self.sppf_groups > 1: 
+            x1 = self.shuffle_channels(x1, self.sppf_groups)
             
         if isinstance(self.kernel_sizes, int):
             y1 = self.poolings(x1)
@@ -1918,8 +1918,8 @@ class TinySPPFCSPBlock(BaseModule):
         x2 = self.short_layer(x)
         
         # groups
-        if self.groups > 1:
-            return self.final_conv(self.shuffle_channels(torch.cat((x1, x2), dim=1), groups=self.groups))
+        if self.sppf_groups > 1:
+            return self.final_conv(self.shuffle_channels(torch.cat((x1, x2), dim=1), groups=self.sppf_groups))
         else:
             return self.final_conv(torch.cat((x1, x2), dim=1))
 
