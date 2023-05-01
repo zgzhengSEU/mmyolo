@@ -105,7 +105,7 @@ model = dict(
         obj_level_weights=obj_level_weights,
         loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
         # loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
-        loss_cls= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=0.025),
+        loss_cls= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
         loss_obj= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=1.0)
         # loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))
     )

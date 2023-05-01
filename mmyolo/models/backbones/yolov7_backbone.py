@@ -40,6 +40,8 @@ class YOLOv7Backbone(BaseBackbone):
         init_cfg (:obj:`ConfigDict` or dict or list[dict] or
             list[:obj:`ConfigDict`]): Initialization config dict.
     """
+    _tiny_stage1_cfg_FReLU = dict(type='TinyDownSampleBlock', middle_ratio=0.5, use_FReLU=True)
+    _tiny_stage2_4_cfg_FReLU = dict(type='TinyDownSampleBlock', middle_ratio=1.0, use_FReLU=True)
     _tiny_stage1_cfg = dict(type='TinyDownSampleBlock', middle_ratio=0.5)
     _tiny_stage2_4_cfg = dict(type='TinyDownSampleBlock', middle_ratio=1.0)
     _l_expand_channel_2x = dict(
@@ -98,6 +100,9 @@ class YOLOv7Backbone(BaseBackbone):
         'Tiny': [[64, 64, _tiny_stage1_cfg], [64, 128, _tiny_stage2_4_cfg],
                  [128, 256, _tiny_stage2_4_cfg],
                  [256, 512, _tiny_stage2_4_cfg]],
+        'Tiny_FReLU': [[64, 64, _tiny_stage1_cfg_FReLU], [64, 128, _tiny_stage2_4_cfg_FReLU],
+                 [128, 256, _tiny_stage2_4_cfg_FReLU],
+                 [256, 512, _tiny_stage2_4_cfg_FReLU]],
         'L': [[64, 256, _l_expand_channel_2x],
               [256, 512, _l_expand_channel_2x],
               [512, 1024, _l_expand_channel_2x],
@@ -133,7 +138,8 @@ class YOLOv7Backbone(BaseBackbone):
                  input_channels: int = 3,
                  out_indices: Tuple[int] = (2, 3, 4),
                  frozen_stages: int = -1,
-                 use_softpool: bool = False,
+                 use_softpool: bool = False, #
+                 use_FReLU: bool = False, #
                  plugins: Union[dict, List[dict]] = None,
                  norm_cfg: ConfigType = dict(
                      type='BN', momentum=0.03, eps=0.001),
@@ -142,6 +148,9 @@ class YOLOv7Backbone(BaseBackbone):
                  init_cfg: OptMultiConfig = None):
         assert arch in self.arch_settings.keys()
         self.arch = arch
+        self.use_FReLU = use_FReLU
+        if self.use_FReLU and self.arch == 'Tiny':
+            self.arch = 'Tiny_FReLU'
         self.use_softpool = use_softpool
         super().__init__(
             self.arch_settings[arch],
@@ -184,7 +193,7 @@ class YOLOv7Backbone(BaseBackbone):
                     stride=1,
                     norm_cfg=self.norm_cfg,
                     act_cfg=self.act_cfg))
-        elif self.arch == 'Tiny':
+        elif self.arch == 'Tiny' or self.arch == 'Tiny_FReLU':
             stem = nn.Sequential(
                 ConvModule(
                     3,
@@ -193,7 +202,7 @@ class YOLOv7Backbone(BaseBackbone):
                     padding=1,
                     stride=2,
                     norm_cfg=self.norm_cfg,
-                    act_cfg=self.act_cfg),
+                    act_cfg=dict(type='FReLU', inplace=True, in_channels=int(self.arch_setting[0][0] * self.widen_factor // 2)) if self.use_FReLU else self.act_cfg),
                 ConvModule(
                     int(self.arch_setting[0][0] * self.widen_factor // 2),
                     int(self.arch_setting[0][0] * self.widen_factor),
@@ -201,7 +210,7 @@ class YOLOv7Backbone(BaseBackbone):
                     padding=1,
                     stride=2,
                     norm_cfg=self.norm_cfg,
-                    act_cfg=self.act_cfg))
+                    act_cfg=dict(type='FReLU', inplace=True, in_channels=int(self.arch_setting[0][0] * self.widen_factor)) if self.use_FReLU else self.act_cfg))
         elif self.arch in ['W', 'E', 'D', 'E2E']:
             stem = Focus(
                 3,
@@ -262,7 +271,7 @@ class YOLOv7Backbone(BaseBackbone):
                 padding=1,
                 norm_cfg=self.norm_cfg,
                 act_cfg=self.act_cfg)
-        elif self.arch == 'Tiny':
+        elif self.arch == 'Tiny' or self.arch == 'Tiny_FReLU':
             if stage_idx != 0:
                 if self.use_softpool:
                     import softpool_cuda

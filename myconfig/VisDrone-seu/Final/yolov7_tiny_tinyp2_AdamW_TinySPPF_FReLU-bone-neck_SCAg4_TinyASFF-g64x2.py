@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", 'SCA', 'TinyASFF', "QFL"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", 'SCA', 'TinyASFF', "FReLU", "TinySPPF"]
 GROUP_NAME = "yolov7_tiny-final"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_SCAg4_TinyASFF_QFL"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPF_FReLU-bone-neck_SCAg4_TinyASFF-g64x2"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -13,7 +13,7 @@ Wandb_init_kwargs = dict(
     tags=TAGS,
     mode="offline"
 )
-# visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
+visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
 import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -67,6 +67,10 @@ lr_factor = 0.01  # Learning rate scaling factor
 num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
+backbone_FReLU=True
+neck_FReLU=True
+use_carafe_neck=False
+use_carafe_asff=False
 model = dict(
     backbone=dict(
         plugins=[
@@ -76,26 +80,30 @@ model = dict(
                 stages=(True, True, True, True))
         ],
         arch='Tiny', 
+        use_FReLU=backbone_FReLU,
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-        out_indices=(1, 2, 3, 4)),  
+        out_indices=(1, 2, 3, 4)),
     neck=[
         dict(
-            use_carafe=False,
+            use_carafe=use_carafe_neck,
+            sppf_groups=4,
+            use_FReLU=neck_FReLU,
             type='YOLOv7PAFPN4',
             upsample_feats_cat_first=False,
             norm_cfg=norm_cfg,
             is_tiny_version=True,
             in_channels=[64, 128, 256, 512],
             out_channels=[32, 64, 128, 256], # 4 层时不会*2
-            block_cfg=dict(
-                type='TinyDownSampleBlock', middle_ratio=0.25),
+            block_cfg=dict(type='TinyDownSampleBlock', middle_ratio=0.25, use_FReLU=neck_FReLU),
             act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
             use_repconv_outs=False),
         dict(
             type='TinyASFFNeck',
             widen_factor=0.5,
             head_num=4,
-            use_carafe=False,
+            use_carafe=use_carafe_asff,
+            groups=64,
+            use_two_group_expand=True,
             use_att='TinyASFF')],
     bbox_head=dict(
         head_module=dict(
@@ -103,13 +111,9 @@ model = dict(
             featmap_strides=strides),
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
+        loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
         loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
-        # loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
-        loss_cls= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
-        loss_obj= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=1.0)
-        # loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))
-    )
-)
+        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [
     dict(

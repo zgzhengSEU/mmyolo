@@ -2,7 +2,7 @@ _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "tinyp2","AdamW"]
-GROUP_NAME = "yolov7_tiny"
+GROUP_NAME = "yolov7_tiny-final"
 ALGO_NAME = "yolov7_tiny_tinyp2_AdamW"
 DATASET_NAME = "VisDrone"
 
@@ -76,10 +76,10 @@ model = dict(
     neck=dict(
         type='YOLOv7PAFPN4',
         use_carafe=False,
+        sppf_groups=1, # 1: 7.779G 6.128M; 4: 7.582G 5.636M; 8: 7.549G 5.554M; 16: 7.533G 5.513M
         is_tiny_version=True,
         in_channels=[64, 128, 256, 512],
         out_channels=[32, 64, 128, 256],
-        sppf_groups=1,
         block_cfg=dict(
             _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),

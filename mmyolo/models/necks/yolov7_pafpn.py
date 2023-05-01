@@ -109,7 +109,7 @@ class YOLOv7PAFPN(BaseYOLONeck):
                 expand_ratio=self.spp_expand_ratio,
                 is_tiny_version=self.is_tiny_version,
                 kernel_sizes=5,
-                groups=self.sppf_groups,
+                sppf_groups=self.sppf_groups,
                 norm_cfg=self.norm_cfg,
                 act_cfg=self.act_cfg)
         else:

@@ -118,7 +118,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
             layer = TinySPPFCSPBlock(
                 self.in_channels[idx],
                 self.out_channels[idx],
-                groups=self.sppf_groups,
+                sppf_groups=self.sppf_groups,
                 use_FReLU=self.use_FReLU,
                 expand_ratio=self.spp_expand_ratio,
                 is_tiny_version=self.is_tiny_version,
