@@ -13,7 +13,7 @@ class ShuffleCoordAttention(nn.Module):
     def __init__(self, 
                  in_channels, 
                  groups=8,
-                 act_cfg='Hardswish'):
+                 act_cfg='SiLU'):
         super(ShuffleCoordAttention, self).__init__()
         self.groups = groups
         mid_channels = in_channels // groups
@@ -23,8 +23,8 @@ class ShuffleCoordAttention(nn.Module):
 
         self.conv1 = nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0)
         self.bn1 = nn.BatchNorm2d(mid_channels)
-        if act_cfg == 'Hardswish':
-            self.act = nn.Hardswish(inplace=True)
+        if act_cfg == 'SiLU':
+            self.act = nn.SiLU(inplace=True)
         else:
             self.act = MODELS.build(act_cfg)
         self.conv_h = nn.Conv2d(mid_channels, mid_channels, kernel_size=1, stride=1, padding=0)

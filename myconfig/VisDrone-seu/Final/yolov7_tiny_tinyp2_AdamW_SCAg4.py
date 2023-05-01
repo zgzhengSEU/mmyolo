@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","sgd", 'SCA', 'TinyASFF', 'Mish']
+TAGS = ["SEU", "load", "tinyp2","AdamW", 'SCA']
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_originsgd_Mish_SCAg4_TinyASFF"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_SCAg4"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -72,31 +72,23 @@ model = dict(
         plugins=[
             dict(
                 cfg=dict(type='ShuffleCoordAttention', groups=4),
-                act_cfg=dict(type='Mish', inplace=True),
+                # act_cfg=dict(type='Mish', inplace=True),
                 stages=(True, True, True, True))
         ],
         arch='Tiny', 
-        act_cfg=dict(type='Mish', inplace=True),
-        out_indices=(1, 2, 3, 4)),  
-    neck=[
-        dict(
-            use_carafe=False,
-            type='YOLOv7PAFPN4',
-            upsample_feats_cat_first=False,
-            norm_cfg=norm_cfg,
-            is_tiny_version=True,
-            in_channels=[64, 128, 256, 512],
-            out_channels=[32, 64, 128, 256], # 4 层时不会*2
-            block_cfg=dict(
-                type='TinyDownSampleBlock', middle_ratio=0.25),
-            act_cfg=dict(type='Mish', inplace=True),
-            use_repconv_outs=False),
-        dict(
-            type='TinyASFFNeck',
-            widen_factor=0.5,
-            head_num=4,
-            use_carafe=True,
-            use_att='TinyASFF')],
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        out_indices=(1, 2, 3, 4)),
+    neck=dict(
+        type='YOLOv7PAFPN4',
+        use_carafe=False,
+        is_tiny_version=True,
+        in_channels=[64, 128, 256, 512],
+        out_channels=[32, 64, 128, 256],
+        sppf_groups=1,
+        block_cfg=dict(
+            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(
             in_channels = [64, 128, 256, 512],
@@ -165,5 +157,13 @@ train_pipeline = [
 train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
+
+base_lr = 0.004
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
+    paramwise_cfg=dict(
+        norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
