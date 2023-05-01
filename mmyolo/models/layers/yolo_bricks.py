@@ -30,15 +30,18 @@ else:
 
     MODELS.register_module(module=SiLU, name='SiLU')
 
-import torch.nn.functional as F
-class Mish(nn.Module):
-    def __init__(self, inplace=True):
+class FReLU(nn.Module):
+    def __init__(self, in_channels, inplace=True):
         super().__init__()
-        # print("Mish avtivation loaded...")
+        self.depthwise_conv_bn = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, 3, padding=1, groups=in_channels, bias=False),
+            nn.BatchNorm2d(in_channels))
 
-    def forward(self,x):
-        return x *( torch.tanh(F.softplus(x)))
-MODELS.register_module(module=Mish, name='Mish')
+    def forward(self, x):
+        funnel_x = self.depthwise_conv_bn(x)
+        return torch.max(x, funnel_x)
+    
+MODELS.register_module(module=FReLU, name='FReLU')
 
 
 class SPPFBottleneck(BaseModule):
@@ -858,7 +861,8 @@ class TinyDownSampleBlock(BaseModule):
             conv_cfg: OptConfigType = None,
             norm_cfg: ConfigType = dict(type='BN', momentum=0.03, eps=0.001),
             act_cfg: ConfigType = dict(type='LeakyReLU', negative_slope=0.1),
-            init_cfg: OptMultiConfig = None):
+            init_cfg: OptMultiConfig = None,
+            use_FReLU: bool = False):
         super().__init__(init_cfg)
 
         middle_channels = int(in_channels * middle_ratio)
@@ -869,7 +873,7 @@ class TinyDownSampleBlock(BaseModule):
             1,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            act_cfg=dict(type='FReLU', inplace=True, in_channels=middle_channels) if use_FReLU else act_cfg)
 
         self.main_convs = nn.ModuleList()
         for i in range(3):
@@ -881,7 +885,7 @@ class TinyDownSampleBlock(BaseModule):
                         1,
                         conv_cfg=conv_cfg,
                         norm_cfg=norm_cfg,
-                        act_cfg=act_cfg))
+                        act_cfg=dict(type='FReLU', inplace=True, in_channels=middle_channels) if use_FReLU else act_cfg))
             else:
                 self.main_convs.append(
                     ConvModule(
@@ -891,7 +895,7 @@ class TinyDownSampleBlock(BaseModule):
                         padding=(kernel_sizes - 1) // 2,
                         conv_cfg=conv_cfg,
                         norm_cfg=norm_cfg,
-                        act_cfg=act_cfg))
+                        act_cfg=dict(type='FReLU', inplace=True, in_channels=middle_channels) if use_FReLU else act_cfg))
 
         self.final_conv = ConvModule(
             middle_channels * 4,
@@ -899,7 +903,7 @@ class TinyDownSampleBlock(BaseModule):
             1,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            act_cfg=dict(type='FReLU', inplace=True, in_channels=out_channels) if use_FReLU else act_cfg)
 
     def forward(self, x) -> Tensor:
         short_out = self.short_conv(x)
@@ -1765,7 +1769,8 @@ class TinySPPFCSPBlock(BaseModule):
     def __init__(self,
                  in_channels: int,
                  out_channels: int,
-                 groups: int = 4,
+                 groups: int = 4, # 
+                 use_FReLU: bool = False,
                  expand_ratio: float = 0.5,
                  kernel_sizes: Union[int, Sequence[int]] = 5,
                  is_tiny_version: bool = False,
@@ -1776,7 +1781,8 @@ class TinySPPFCSPBlock(BaseModule):
                  init_cfg: OptMultiConfig = None):
         super().__init__(init_cfg=init_cfg)
         self.is_tiny_version = is_tiny_version
-        self.groups = groups
+        self.groups = groups #
+        self.use_FReLU = use_FReLU #
         mid_channels = int(2 * out_channels * expand_ratio)
 
         if is_tiny_version:
@@ -1787,7 +1793,7 @@ class TinySPPFCSPBlock(BaseModule):
                 groups=self.groups,
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg,
-                act_cfg=act_cfg)
+                act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg)
         else:
             self.main_layers = nn.Sequential(
                 ConvModule(
@@ -1796,7 +1802,7 @@ class TinySPPFCSPBlock(BaseModule):
                     1,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
-                    act_cfg=act_cfg),
+                    act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg),
                 ConvModule(
                     mid_channels,
                     mid_channels,
@@ -1804,14 +1810,14 @@ class TinySPPFCSPBlock(BaseModule):
                     padding=1,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
-                    act_cfg=act_cfg),
+                    act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg),
                 ConvModule(
                     mid_channels,
                     mid_channels,
                     1,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
-                    act_cfg=act_cfg),
+                    act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg),
             )
 
         self.kernel_sizes = kernel_sizes
@@ -1832,7 +1838,7 @@ class TinySPPFCSPBlock(BaseModule):
                 groups=self.groups,
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg,
-                act_cfg=act_cfg)
+                act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg)
         else:
             self.fuse_layers = nn.Sequential(
                 ConvModule(
@@ -1841,7 +1847,7 @@ class TinySPPFCSPBlock(BaseModule):
                     1,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
-                    act_cfg=act_cfg),
+                    act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg),
                 ConvModule(
                     mid_channels,
                     mid_channels,
@@ -1849,7 +1855,7 @@ class TinySPPFCSPBlock(BaseModule):
                     padding=1,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
-                    act_cfg=act_cfg))
+                    act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg))
 
         self.short_layer = ConvModule(
             in_channels,
@@ -1858,7 +1864,7 @@ class TinySPPFCSPBlock(BaseModule):
             groups=self.groups,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg)
 
         self.final_conv = ConvModule(
             2 * mid_channels,
@@ -1867,7 +1873,7 @@ class TinySPPFCSPBlock(BaseModule):
             groups=self.groups,
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            act_cfg=dict(type='FReLU', inplace=True, in_channels=out_channels) if self.use_FReLU else act_cfg)
     @staticmethod
     def shuffle_channels(x, groups):
         """shuffle channels of a 4-D Tensor"""
@@ -1889,7 +1895,11 @@ class TinySPPFCSPBlock(BaseModule):
             x (Tensor): The input tensor.
         """
         x1 = self.main_layers(x)
-        x1 = self.shuffle_channels(x1, self.groups)
+        
+        # group
+        if self.groups > 1: 
+            x1 = self.shuffle_channels(x1, self.groups)
+            
         if isinstance(self.kernel_sizes, int):
             y1 = self.poolings(x1)
             y2 = self.poolings(y1)
@@ -1906,7 +1916,12 @@ class TinySPPFCSPBlock(BaseModule):
                 x1 = self.fuse_layers(torch.cat(concat_list, 1))
 
         x2 = self.short_layer(x)
-        return self.final_conv(self.shuffle_channels(torch.cat((x1, x2), dim=1), groups=self.groups))
+        
+        # groups
+        if self.groups > 1:
+            return self.final_conv(self.shuffle_channels(torch.cat((x1, x2), dim=1), groups=self.groups))
+        else:
+            return self.final_conv(torch.cat((x1, x2), dim=1))
 
 
 if __name__ == '__main__':

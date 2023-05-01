@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", 'SCA', 'TinyASFF', 'Mish', "QFL"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", 'FReLU']
 GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_Mish_SCAg4_TinyASFF_QFL"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_FReLU"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -13,11 +13,12 @@ Wandb_init_kwargs = dict(
     tags=TAGS,
     mode="offline"
 )
-# visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
+visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
 import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
+
 load_from = "https://download.openmmlab.com/mmyolo/v0/yolov7/yolov7_tiny_syncbn_fast_8x16b-300e_coco/yolov7_tiny_syncbn_fast_8x16b-300e_coco_20221126_102719-0ee5bbdf.pth"
 # ========================modified parameters========================
 num_det_layers = 4
@@ -48,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 64
+train_batch_size_per_gpu = 16
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -69,47 +70,30 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
-        plugins=[
-            dict(
-                cfg=dict(type='ShuffleCoordAttention', groups=4),
-                act_cfg=dict(type='Mish', inplace=True),
-                stages=(True, True, True, True))
-        ],
         arch='Tiny', 
-        act_cfg=dict(type='Mish', inplace=True),
-        out_indices=(1, 2, 3, 4)),  
-    neck=[
-        dict(
-            use_carafe=False,
-            type='YOLOv7PAFPN4',
-            upsample_feats_cat_first=False,
-            norm_cfg=norm_cfg,
-            is_tiny_version=True,
-            in_channels=[64, 128, 256, 512],
-            out_channels=[32, 64, 128, 256], # 4 层时不会*2
-            block_cfg=dict(
-                type='TinyDownSampleBlock', middle_ratio=0.25),
-            act_cfg=dict(type='Mish', inplace=True),
-            use_repconv_outs=False),
-        dict(
-            type='TinyASFFNeck',
-            widen_factor=0.5,
-            head_num=4,
-            use_carafe=True,
-            use_att='TinyASFF')],
+        act_cfg=dict(type='HSwish', inplace=True),
+        out_indices=(1, 2, 3, 4)),
+    neck=dict(
+        type='YOLOv7PAFPN4',
+        use_carafe=False,
+        use_FReLU=True,
+        is_tiny_version=True,
+        in_channels=[64, 128, 256, 512],
+        out_channels=[32, 64, 128, 256],
+        sppf_groups=1,
+        block_cfg=dict(
+            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25, use_FReLU=True),
+        act_cfg=dict(type='HSwish', inplace=True),
+        use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(
             in_channels = [64, 128, 256, 512],
             featmap_strides=strides),
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
+        loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
         loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
-        # loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
-        loss_cls= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=0.025),
-        loss_obj= dict(_delete_=True, _scope_='mmdet', type='QualityFocalLoss', use_sigmoid=True, beta=2.0, loss_weight=1.0)
-        # loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))
-    )
-)
+        loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [
     dict(

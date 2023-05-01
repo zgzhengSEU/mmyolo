@@ -61,7 +61,8 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                  use_maxpool_in_downsample: bool = True,
                  use_in_channels_in_downsample: bool = False,
                  use_repconv_outs: bool = True,
-                 use_carafe: bool = False,
+                 use_carafe: bool = False, #
+                 use_FReLU: bool = False, #
                  sppf_groups: int = 1,
                  upsample_feats_cat_first: bool = False,
                  freeze_all: bool = False,
@@ -80,6 +81,8 @@ class YOLOv7PAFPN4(BaseYOLONeck):
         self.block_cfg.setdefault('act_cfg', act_cfg)
         self.use_carafe = use_carafe
         self.sppf_groups = sppf_groups
+        self.use_FReLU = use_FReLU
+        
         super().__init__(
             in_channels=[
                 int(channel * widen_factor) for channel in in_channels
@@ -116,6 +119,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                 self.in_channels[idx],
                 self.out_channels[idx],
                 groups=self.sppf_groups,
+                use_FReLU=self.use_FReLU,
                 expand_ratio=self.spp_expand_ratio,
                 is_tiny_version=self.is_tiny_version,
                 kernel_sizes=5,
@@ -139,8 +143,8 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                 self.out_channels[idx - 1],
                 1,
                 norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg),
-            CARAFEPack(channels=self.out_channels[idx - 1], scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2, mode='nearest') )
+                act_cfg=dict(type='FReLU', inplace=True, in_channels=self.out_channels[idx - 1]) if self.use_FReLU else self.act_cfg),
+            CARAFEPack(channels=self.out_channels[idx - 1], scale_factor=2) if self.use_carafe else nn.Upsample(scale_factor=2, mode='nearest'))
 
     def build_top_down_layer(self, idx: int) -> nn.Module:
         """build top down layer.
@@ -171,7 +175,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                 self.out_channels[idx + 1],
                 use_in_channels_of_middle=self.use_in_channels_in_downsample,
                 norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg)
+                act_cfg=dict(type='FReLU', inplace=True, in_channels=self.out_channels[idx + 1]) if self.use_FReLU else self.act_cfg)
         else:
             return ConvModule(
                 self.out_channels[idx],
@@ -180,7 +184,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                 stride=2,
                 padding=1,
                 norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg)
+                act_cfg=dict(type='FReLU', inplace=True, in_channels=self.out_channels[idx + 1]) if self.use_FReLU else self.act_cfg)
 
     def build_bottom_up_layer(self, idx: int) -> nn.Module:
         """build bottom up layer.
@@ -217,7 +221,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                 out_channels,
                 3,
                 norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg)
+                act_cfg=dict(type='FReLU', inplace=True, in_channels=out_channels) if self.use_FReLU else self.act_cfg)
         else:
             return ConvModule(
                 self.out_channels[idx],
@@ -225,4 +229,4 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                 3,
                 padding=1,
                 norm_cfg=self.norm_cfg,
-                act_cfg=self.act_cfg)
+                act_cfg=dict(type='FReLU', inplace=True, in_channels=out_channels) if self.use_FReLU else self.act_cfg)
