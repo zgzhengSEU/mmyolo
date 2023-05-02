@@ -148,6 +148,7 @@ class ASFF(nn.Module):
                  use_carafe=False,
                  use_softpool=False,
                  use_two_group_expand=False,
+                 use_group_expand_nums=1,
                  act='silu'):
         """
         Args:
@@ -164,6 +165,7 @@ class ASFF(nn.Module):
         self.use_softpool = use_softpool
         self.groups = groups
         self.use_two_group_expand = use_two_group_expand
+        self.use_group_expand_nums = use_group_expand_nums
         if self.type == 'ASFF-X':
             self.dim = [
                 int(1280 * multiplier),
@@ -230,10 +232,13 @@ class ASFF(nn.Module):
                 self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         
         # add expand layer
-        if self.use_two_group_expand:
+        if self.use_group_expand_nums > 1:
+            shuffleConv = []
+            for i in range(self.use_group_expand_nums - 1):
+                shuffleConv.append(shufflechannel_BaseConv(self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act))
             self.expand = nn.Sequential(
                 Conv(self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act), 
-                shufflechannel_BaseConv(self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act))
+                *shuffleConv)
         else:
             self.expand = Conv(self.inter_dim, self.inter_dim, expand_kernel, 1, groups=self.groups, act=act)
             
@@ -599,7 +604,7 @@ class TinyASFF3(nn.Module):
     
 @MODELS.register_module()
 class TinyASFFNeck(nn.Module):
-    def __init__(self, widen_factor, head_num=4, use_att='ASFF', groups=1, use_two_group_expand=False, use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
+    def __init__(self, widen_factor, head_num=4, use_att='ASFF', groups=1, use_two_group_expand=False, use_group_expand_nums=1,use_carafe=False, use_softpool=False, asff_channel=2, expand_kernel=3, act='silu'):
         super().__init__()
         self.head_num = head_num
         if self.head_num == 4:
@@ -613,6 +618,7 @@ class TinyASFFNeck(nn.Module):
                 use_carafe=use_carafe,
                 use_softpool=use_softpool,
                 use_two_group_expand=use_two_group_expand,
+                use_group_expand_nums=use_group_expand_nums,
                 act=act,
             )
             self.asff_2 = ASFF(
@@ -625,6 +631,7 @@ class TinyASFFNeck(nn.Module):
                 use_carafe=use_carafe,
                 use_softpool=use_softpool,
                 use_two_group_expand=use_two_group_expand,
+                use_group_expand_nums=use_group_expand_nums,
                 act=act,
             )
             self.asff_3 = ASFF(
@@ -637,6 +644,7 @@ class TinyASFFNeck(nn.Module):
                 use_carafe=use_carafe,
                 use_softpool=use_softpool,
                 use_two_group_expand=use_two_group_expand,
+                use_group_expand_nums=use_group_expand_nums,
                 act=act,
             )
             self.asff_4 = ASFF(
@@ -649,6 +657,7 @@ class TinyASFFNeck(nn.Module):
                 use_carafe=use_carafe,
                 use_softpool=use_softpool,
                 use_two_group_expand=use_two_group_expand,
+                use_group_expand_nums=use_group_expand_nums,
                 act=act,
             )
         elif self.head_num == 3:

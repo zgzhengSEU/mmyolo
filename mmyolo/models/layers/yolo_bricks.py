@@ -1921,9 +1921,10 @@ class TinySPPFCSPBlock(BaseModule):
         
         # groups
         if self.sppf_groups > 1:
-            return self.final_conv(self.shuffle_channels(torch.cat((x1, x2), dim=1), groups=self.sppf_groups))
-        else:
-            return self.final_conv(torch.cat((x1, x2), dim=1))
+            x1 = self.shuffle_channels(x1, groups=self.sppf_groups)
+            x2 = self.shuffle_channels(x2, groups=self.sppf_groups)
+
+        return self.final_conv(torch.cat((x1, x2), dim=1))
 
 
 if __name__ == '__main__':
