@@ -135,7 +135,48 @@ class shufflechannel_BaseConv(nn.Module):
     def fuseforward(self, x):
         return self.act(self.conv(x))
 
+class FocusFuseFLops(nn.Module):
+    def __init__(self, mode='FocusFuse', in_channels=0) -> None:
+        super().__init__()
+        self.mode = mode
+        if self.mode == 'Conv':
+            self.Conv = BaseConv(in_channels=in_channels, out_channels=in_channels * 2, ksize=3, stride=2)
+    def focus_channels(self, x):
+        # [b,c,h,w]->[b,c*4,h/2,w/2]
+        patch_top_left = x[..., ::2, ::2]
+        patch_top_right = x[..., ::2, 1::2]
+        patch_bot_left = x[..., 1::2, ::2]
+        patch_bot_right = x[..., 1::2, 1::2]
+        x = torch.cat(
+            (
+                patch_top_left,
+                patch_bot_left,
+                patch_top_right,
+                patch_bot_right,
+            ),
+            dim=1,
+        )
+        return x
 
+    def fuse_channels(self, x, num):
+        # [b,c,h,w]->[b,c/2,h,w]
+        if num == 2:
+            return (x[:, 0::2, ...] + x[:, 1::2, ...]) / 2
+        elif num == 4:
+            return (x[:, 0::4, ...] + x[:, 1::4, ...] + x[:, 2::4, ...] + x[:, 3::4, ...]) / 4
+        elif num == 8:
+            return (x[:, 0::8, ...] + x[:, 1::8, ...] + x[:, 2::8, ...] + x[:, 3::8, ...] + x[:, 4::8, ...] + x[:, 5::8, ...] + x[:, 6::8, ...] + x[:, 7::8, ...]) / 8
+        else:
+            raise NotImplementedError(f'num of {num} are not implemented !')
+
+    def forward(self, x):
+        if self.mode == 'Conv':
+            x = self.Conv(x)
+        else:
+            x = self.focus_channels(x)
+            x = self.fuse_channels(x, num=2)
+        return x
+    
 class ASFF(nn.Module):
 
     def __init__(self,
@@ -697,18 +738,26 @@ class TinyASFFNeck(nn.Module):
         return outputs
 
 if __name__ == '__main__':
-    input=[torch.randn(1,64,160,160), torch.randn(1,128,80,80), torch.randn(1,256,40,40), torch.randn(1,512,20,20)]
-    model = TinyASFFNeck(use_att='TinyASFF', groups=4, use_two_group_expand=True, widen_factor=0.5, use_softpool=False, use_carafe=False)
-    output = model(input)
-    # print(output.shape)
     from fvcore.nn import FlopCountAnalysis
     from fvcore.nn import flop_count_table
     from fvcore.nn import flop_count_str
-    flops = FlopCountAnalysis(model, input)
-    print(f'input shape: {input[0].shape}')
-    print(flop_count_table(flops))
+    
+    # input=[torch.randn(1,64,160,160), torch.randn(1,128,80,80), torch.randn(1,256,40,40), torch.randn(1,512,20,20)]
+    # model = TinyASFFNeck(use_att='TinyASFF', groups=4, use_two_group_expand=True, widen_factor=0.5, use_softpool=False, use_carafe=False)
+    # output = model(input)
+
+    # print(output.shape)
+
+    # flops = FlopCountAnalysis(model, input)
+    # print(f'input shape: {input[0].shape}')
+    # print(flop_count_table(flops))
     # print(flop_count_str(flops))
     # input = torch.randn(1, 10, 41, 41)
     # out = F.max_pool2d(input, 3, stride=2, padding=1)
     # print(out.shape)
     
+    input = torch.randn(1,512, 20, 20)
+    model = FocusFuseFLops(in_channels=512)
+    flops = FlopCountAnalysis(model, input)
+    print(f'input shape: {input.shape}')
+    print(flop_count_table(flops))
