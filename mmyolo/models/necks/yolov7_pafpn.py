@@ -61,6 +61,7 @@ class YOLOv7PAFPN(BaseYOLONeck):
                  use_maxpool_in_downsample: bool = True,
                  use_in_channels_in_downsample: bool = False,
                  use_repconv_outs: bool = True,
+                 use_SPPF_mode: bool = True, #
                  upsample_feats_cat_first: bool = False,
                  freeze_all: bool = False,
                  norm_cfg: ConfigType = dict(
@@ -77,6 +78,7 @@ class YOLOv7PAFPN(BaseYOLONeck):
         self.block_cfg.setdefault('norm_cfg', norm_cfg)
         self.block_cfg.setdefault('act_cfg', act_cfg)
         self.sppf_groups = sppf_groups
+        self.use_SPPF_mode = use_SPPF_mode
         
         super().__init__(
             in_channels=[
@@ -110,6 +112,7 @@ class YOLOv7PAFPN(BaseYOLONeck):
                 is_tiny_version=self.is_tiny_version,
                 kernel_sizes=5,
                 sppf_groups=self.sppf_groups,
+                use_SPPF_mode=self.use_SPPF_mode,
                 norm_cfg=self.norm_cfg,
                 act_cfg=self.act_cfg)
         else:

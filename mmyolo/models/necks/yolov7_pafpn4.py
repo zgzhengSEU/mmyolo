@@ -63,6 +63,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                  use_repconv_outs: bool = True,
                  use_carafe: bool = False, #
                  use_FReLU: bool = False, #
+                 use_SPPF_mode: bool = True, #
                  sppf_groups: int = 1,
                  upsample_feats_cat_first: bool = False,
                  freeze_all: bool = False,
@@ -82,6 +83,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
         self.use_carafe = use_carafe
         self.sppf_groups = sppf_groups
         self.use_FReLU = use_FReLU
+        self.use_SPPF_mode = use_SPPF_mode
         
         super().__init__(
             in_channels=[
@@ -120,6 +122,7 @@ class YOLOv7PAFPN4(BaseYOLONeck):
                 self.out_channels[idx],
                 sppf_groups=self.sppf_groups,
                 use_FReLU=self.use_FReLU,
+                use_SPPF_mode=self.use_SPPF_mode,
                 expand_ratio=self.spp_expand_ratio,
                 is_tiny_version=self.is_tiny_version,
                 kernel_sizes=5,

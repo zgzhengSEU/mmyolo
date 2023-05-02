@@ -1770,7 +1770,8 @@ class TinySPPFCSPBlock(BaseModule):
                  in_channels: int,
                  out_channels: int,
                  sppf_groups: int = 4, # 
-                 use_FReLU: bool = False,
+                 use_FReLU: bool = False, #
+                 use_SPPF_mode: bool = True,
                  expand_ratio: float = 0.5,
                  kernel_sizes: Union[int, Sequence[int]] = 5,
                  is_tiny_version: bool = False,
@@ -1783,6 +1784,7 @@ class TinySPPFCSPBlock(BaseModule):
         self.is_tiny_version = is_tiny_version
         self.sppf_groups = sppf_groups #
         self.use_FReLU = use_FReLU #
+        self.use_SPPF_mode = use_SPPF_mode #
         mid_channels = int(2 * out_channels * expand_ratio)
 
         if is_tiny_version:
@@ -1820,14 +1822,14 @@ class TinySPPFCSPBlock(BaseModule):
                     act_cfg=dict(type='FReLU', inplace=True, in_channels=mid_channels) if self.use_FReLU else act_cfg),
             )
 
-        self.kernel_sizes = kernel_sizes
-        if isinstance(kernel_sizes, int):
+        self.kernel_sizes = kernel_sizes if self.use_SPPF_mode else [5, 9, 13]
+        if isinstance(self.kernel_sizes, int):
             self.poolings = nn.MaxPool2d(
-                kernel_size=kernel_sizes, stride=1, padding=kernel_sizes // 2)
+                kernel_size=self.kernel_sizes, stride=1, padding=self.kernel_sizes // 2)
         else:
             self.poolings = nn.ModuleList([
                 nn.MaxPool2d(kernel_size=ks, stride=1, padding=ks // 2)
-                for ks in kernel_sizes
+                for ks in self.kernel_sizes
             ])
 
         if is_tiny_version:
