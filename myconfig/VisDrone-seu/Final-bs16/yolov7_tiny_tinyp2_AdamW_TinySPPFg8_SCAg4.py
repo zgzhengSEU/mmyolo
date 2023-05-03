@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "FReLU", "SCA"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "SCA"]
 GROUP_NAME = "yolov7_tiny-final-bs16"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_FReLU-neck_SCAg4"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_SCAg4"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -11,7 +11,7 @@ Wandb_init_kwargs = dict(
     group=GROUP_NAME,
     name=ALGO_NAME,
     tags=TAGS,
-    mode="offline"
+    mode="online"
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
@@ -69,7 +69,7 @@ num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 backbone_FReLU=False
-neck_FReLU=True
+neck_FReLU=False
 model = dict(
     backbone=dict(
         plugins=[

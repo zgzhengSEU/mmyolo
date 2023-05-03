@@ -1740,7 +1740,27 @@ class CSPSPPFBottleneck(BaseModule):
         x3 = self.conv6(self.conv5(x3))
         x = self.conv7(torch.cat([y, x3], dim=1))
         return x
+    
+    
+import torch.nn.functional as F
+from torch.nn.modules.utils import _triple, _pair, _single
+class SoftPool2d(nn.Module):
+    def __init__(self, kernel_size, stride, padding=0):
+        super(SoftPool2d, self).__init__()
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
 
+    def forward(self, x):
+        x = self.soft_pool2d(x, kernel_size=self.kernel_size, stride=self.stride)
+        return x
+
+    def soft_pool2d(self, x, kernel_size=2, stride=None):
+        kernel_size = _pair(kernel_size)
+        stride = kernel_size if stride is None else _pair(stride)
+        e_x = torch.sum(torch.exp(x), dim=1, keepdim=True)
+        return F.avg_pool2d(x.mul(e_x), kernel_size, stride=stride, padding=self.padding).mul_(sum(kernel_size)).div_(
+            F.avg_pool2d(e_x, kernel_size, stride=stride, padding=self.padding).mul_(sum(kernel_size)))
 
 @MODELS.register_module()
 class TinySPPFCSPBlock(BaseModule):
@@ -1772,6 +1792,7 @@ class TinySPPFCSPBlock(BaseModule):
                  sppf_groups: int = 4, # 
                  use_FReLU: bool = False, #
                  use_SPPF_mode: bool = True,
+                 use_softpool: bool = False,
                  expand_ratio: float = 0.5,
                  kernel_sizes: Union[int, Sequence[int]] = 5,
                  is_tiny_version: bool = False,
@@ -1785,7 +1806,9 @@ class TinySPPFCSPBlock(BaseModule):
         self.sppf_groups = sppf_groups #
         self.use_FReLU = use_FReLU #
         self.use_SPPF_mode = use_SPPF_mode #
+        self.use_softpool = use_softpool
         mid_channels = int(2 * out_channels * expand_ratio)
+
 
         if is_tiny_version:
             self.main_layers = ConvModule(
@@ -1824,14 +1847,24 @@ class TinySPPFCSPBlock(BaseModule):
 
         self.kernel_sizes = kernel_sizes if self.use_SPPF_mode else [5, 9, 13]
         if isinstance(self.kernel_sizes, int):
-            self.poolings = nn.MaxPool2d(
-                kernel_size=self.kernel_sizes, stride=1, padding=self.kernel_sizes // 2)
+            if self.use_softpool:
+                self.poolings = SoftPool2d(
+                    kernel_size=self.kernel_sizes, stride=1, padding=self.kernel_sizes // 2)
+            else:
+                self.poolings = nn.MaxPool2d(
+                    kernel_size=self.kernel_sizes, stride=1, padding=self.kernel_sizes // 2)
         else:
-            self.poolings = nn.ModuleList([
-                nn.MaxPool2d(kernel_size=ks, stride=1, padding=ks // 2)
-                for ks in self.kernel_sizes
-            ])
-
+            if self.use_softpool:
+                self.poolings = nn.ModuleList([
+                    SoftPool2d(kernel_size=ks, stride=1, padding=ks // 2)
+                    for ks in self.kernel_sizes
+                ])
+            else:
+                self.poolings = nn.ModuleList([
+                    nn.MaxPool2d(kernel_size=ks, stride=1, padding=ks // 2)
+                    for ks in self.kernel_sizes
+                ])
+                
         if is_tiny_version:
             self.fuse_layers = ConvModule(
                 4 * mid_channels,

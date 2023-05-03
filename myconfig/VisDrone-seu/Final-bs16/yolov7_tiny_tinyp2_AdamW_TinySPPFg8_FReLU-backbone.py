@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "FReLU", "SCA"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "FReLU"]
 GROUP_NAME = "yolov7_tiny-final-bs16"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_FReLU-neck_SCAg4"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_FReLU-backbone"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -68,16 +68,10 @@ lr_factor = 0.01  # Learning rate scaling factor
 num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
-backbone_FReLU=False
-neck_FReLU=True
+backbone_FReLU=True
+neck_FReLU=False
 model = dict(
     backbone=dict(
-        plugins=[
-            dict(
-                cfg=dict(type='ShuffleCoordAttention', groups=4),
-                # act_cfg=dict(type='Mish', inplace=True),
-                stages=(True, True, True, True))
-        ],
         arch='Tiny',
         use_FReLU=backbone_FReLU,
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),

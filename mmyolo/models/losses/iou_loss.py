@@ -44,7 +44,7 @@ def bbox_overlaps(pred: torch.Tensor,
     Returns:
         Tensor: shape (n, ).
     """
-    assert iou_mode in ('iou', 'ciou', 'giou', 'siou')
+    assert iou_mode in ('iou', 'ciou', 'giou', 'siou', 'eiou', 'focaleiou')
     assert bbox_format in ('xyxy', 'xywh')
     if bbox_format == 'xywh':
         pred = HorizontalBoxes.cxcywh_to_xyxy(pred)
@@ -71,7 +71,7 @@ def bbox_overlaps(pred: torch.Tensor,
 
     # IoU
     ious = overlap / union
-
+    iou = ious
     # enclose area
     enclose_x1y1 = torch.min(pred[..., :2], target[..., :2])
     enclose_x2y2 = torch.max(pred[..., 2:], target[..., 2:])
@@ -147,7 +147,27 @@ def bbox_overlaps(pred: torch.Tensor,
                                    1 - torch.exp(-1 * omiga_h), siou_theta)
 
         ious = ious - ((distance_cost + shape_cost) * 0.5)
-
+    elif iou_mode == 'eiou' or iou_mode == 'focaleiou':
+        # calculate enclose area (c^2)
+        enclose_area = enclose_w**2 + enclose_h**2 + eps
+        
+        # calculate ρ^2(b_pred,b_gt):
+        # euclidean distance between b_pred(bbox2) and b_gt(bbox1)
+        # center point, because bbox format is xyxy -> left-top xy and
+        # right-bottom xy, so need to / 4 to get center point.
+        rho2_left_item = ((bbox2_x1 + bbox2_x2) - (bbox1_x1 + bbox1_x2))**2 / 4
+        rho2_right_item = ((bbox2_y1 + bbox2_y2) -
+                           (bbox1_y1 + bbox1_y2))**2 / 4
+        rho2 = rho2_left_item + rho2_right_item  # rho^2 (ρ^2)
+        
+        rhow2 = (torch.abs(w2 - w1) + eps) ** 2
+        rhoh2 = (torch.abs(h2 - h1) + eps) ** 2
+        
+        ious = ious - ((rho2 / enclose_area) + rhow2 / enclose_w**2 + rhoh2 / enclose_h**2)
+        
+        if iou_mode == 'focaleiou':
+            return ious.clamp(min=-1.0, max=1.0), iou
+        
     return ious.clamp(min=-1.0, max=1.0)
 
 
@@ -169,6 +189,7 @@ class IoULoss(nn.Module):
 
     def __init__(self,
                  iou_mode: str = 'ciou',
+                 fl_eiou_gamma: float = 0.5,
                  bbox_format: str = 'xywh',
                  eps: float = 1e-7,
                  reduction: str = 'mean',
@@ -176,14 +197,15 @@ class IoULoss(nn.Module):
                  return_iou: bool = True):
         super().__init__()
         assert bbox_format in ('xywh', 'xyxy')
-        assert iou_mode in ('ciou', 'siou', 'giou')
+        assert iou_mode in ('ciou', 'siou', 'giou', 'eiou', 'focaleiou')
         self.iou_mode = iou_mode
         self.bbox_format = bbox_format
         self.eps = eps
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.return_iou = return_iou
-
+        self.fl_eiou_gamma = fl_eiou_gamma
+        
     def forward(
         self,
         pred: torch.Tensor,
@@ -217,14 +239,22 @@ class IoULoss(nn.Module):
         if weight is not None and weight.dim() > 1:
             weight = weight.mean(-1)
 
-        iou = bbox_overlaps(
-            pred,
-            target,
-            iou_mode=self.iou_mode,
-            bbox_format=self.bbox_format,
-            eps=self.eps)
-        loss = self.loss_weight * weight_reduce_loss(1.0 - iou, weight,
-                                                     reduction, avg_factor)
+        if self.iou_mode == 'focaleiou':
+            iou, originaliou = bbox_overlaps(
+                pred,
+                target,
+                iou_mode=self.iou_mode,
+                bbox_format=self.bbox_format,
+                eps=self.eps)
+            loss = self.loss_weight * weight_reduce_loss((1.0 - iou) * (originaliou ** self.fl_eiou_gamma), weight,reduction, avg_factor)
+        else:
+            iou = bbox_overlaps(
+                pred,
+                target,
+                iou_mode=self.iou_mode,
+                bbox_format=self.bbox_format,
+                eps=self.eps)
+            loss = self.loss_weight * weight_reduce_loss(1.0 - iou, weight,reduction, avg_factor)
 
         if self.return_iou:
             return loss, iou

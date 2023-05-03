@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "FReLU", "SCA"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "SCA"]
 GROUP_NAME = "yolov7_tiny-final-bs16"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_FReLU-neck_SCAg4"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_SCAg4-neck"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -11,7 +11,7 @@ Wandb_init_kwargs = dict(
     group=GROUP_NAME,
     name=ALGO_NAME,
     tags=TAGS,
-    mode="offline"
+    mode="online"
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
@@ -69,12 +69,13 @@ num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 backbone_FReLU=False
-neck_FReLU=True
+neck_FReLU=False
+sca_groups=4
 model = dict(
     backbone=dict(
         plugins=[
             dict(
-                cfg=dict(type='ShuffleCoordAttention', groups=4),
+                cfg=dict(type='ShuffleCoordAttention', groups=sca_groups),
                 # act_cfg=dict(type='Mish', inplace=True),
                 stages=(True, True, True, True))
         ],
@@ -87,6 +88,8 @@ model = dict(
         use_carafe=False,
         use_FReLU=neck_FReLU,
         use_SPPF_mode=True,
+        use_sca=True,
+        sca_groups=sca_groups,
         sppf_groups=8, # 1: 7.779G 6.128M; 4: 7.582G 5.636M; 8: 7.549G 5.554M; 16: 7.533G 5.513M; 32: 7.525G 5.439M
         is_tiny_version=True,
         in_channels=[64, 128, 256, 512],

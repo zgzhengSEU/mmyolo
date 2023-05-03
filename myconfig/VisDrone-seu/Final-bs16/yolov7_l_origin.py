@@ -234,7 +234,7 @@ train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     num_workers=train_num_workers,
     persistent_workers=persistent_workers,
-    pin_memory=True,
+    pin_memory=False,
     sampler=dict(type='DefaultSampler', shuffle=True),
     collate_fn=dict(type='yolov5_collate'),  # FASTER
     dataset=dict(
@@ -265,7 +265,7 @@ val_dataloader = dict(
     batch_size=val_batch_size_per_gpu,
     num_workers=val_num_workers,
     persistent_workers=persistent_workers,
-    pin_memory=True,
+    pin_memory=False,
     drop_last=False,
     sampler=dict(type='DefaultSampler', shuffle=False),
     dataset=dict(
@@ -282,7 +282,7 @@ test_dataloader = dict(
     batch_size=val_batch_size_per_gpu,
     num_workers=val_num_workers,
     persistent_workers=persistent_workers,
-    pin_memory=True,
+    pin_memory=False,
     drop_last=False,
     sampler=dict(type='DefaultSampler', shuffle=False),
     dataset=dict(

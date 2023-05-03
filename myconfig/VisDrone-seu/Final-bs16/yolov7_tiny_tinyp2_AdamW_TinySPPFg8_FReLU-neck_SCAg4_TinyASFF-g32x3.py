@@ -3,7 +3,7 @@ _base_ = './yolov7_l_origin.py'
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "FReLU", "TinyASFF", "SCA"]
 GROUP_NAME = "yolov7_tiny-final-bs16"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPF_FReLU-neck_SCAg4_TinyASFF-g32x3"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_FReLU-neck_SCAg4_TinyASFF-g32x3"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -86,6 +86,7 @@ model = dict(
         dict(
             use_carafe=False,
             use_FReLU=neck_FReLU,
+            use_SPPF_mode=True,
             sppf_groups=8,
             type='YOLOv7PAFPN4',
             upsample_feats_cat_first=False,
