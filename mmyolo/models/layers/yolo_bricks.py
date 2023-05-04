@@ -14,6 +14,8 @@ from mmengine.utils import digit_version
 from torch import Tensor
 
 from mmyolo.registry import MODELS
+import torch.nn.functional as F
+from torch.nn.modules.utils import _pair
 
 if digit_version(torch.__version__) >= digit_version('1.7.0'):
     MODELS.register_module(module=nn.SiLU, name='SiLU')
@@ -1742,8 +1744,7 @@ class CSPSPPFBottleneck(BaseModule):
         return x
     
     
-import torch.nn.functional as F
-from torch.nn.modules.utils import _triple, _pair, _single
+@MODELS.register_module()
 class SoftPool2d(nn.Module):
     def __init__(self, kernel_size, stride, padding=0):
         super(SoftPool2d, self).__init__()

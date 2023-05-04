@@ -7,7 +7,7 @@ from mmdet.models.backbones.csp_darknet import Focus
 from mmdet.utils import ConfigType, OptMultiConfig
 
 from mmyolo.registry import MODELS
-from ..layers import MaxPoolAndStrideConvBlock
+from ..layers import MaxPoolAndStrideConvBlock, SoftPool2d
 from .base_backbone import BaseBackbone
 
 
@@ -274,8 +274,6 @@ class YOLOv7Backbone(BaseBackbone):
         elif self.arch == 'Tiny' or self.arch == 'Tiny_FReLU':
             if stage_idx != 0:
                 if self.use_softpool:
-                    import softpool_cuda
-                    from SoftPool import SoftPool2d
                     downsample_layer = SoftPool2d(2, 2)
                 else:
                     downsample_layer = nn.MaxPool2d(2, 2)
