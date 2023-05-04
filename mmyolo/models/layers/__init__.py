@@ -5,12 +5,12 @@ from .yolo_bricks import (BepC3StageBlock, BiFusion, CSPLayerWithTwoConv,
                           ELANBlock, ImplicitA, ImplicitM,
                           MaxPoolAndStrideConvBlock, PPYOLOEBasicBlock,
                           RepStageBlock, RepVGGBlock, SPPFBottleneck,
-                          SPPFCSPBlock, TinyDownSampleBlock, TinySPPFCSPBlock, TinyShuffleDownSampleBlock)
+                          SPPFCSPBlock, TinyDownSampleBlock, TinySPPFCSPBlock, SoftPool2d, TinyShuffleDownSampleBlock)
 
 __all__ = [
     'SPPFBottleneck', 'RepVGGBlock', 'RepStageBlock', 'ExpMomentumEMA',
     'ELANBlock', 'MaxPoolAndStrideConvBlock', 'SPPFCSPBlock',
     'PPYOLOEBasicBlock', 'EffectiveSELayer', 'TinyDownSampleBlock',
     'EELANBlock', 'ImplicitA', 'ImplicitM', 'BepC3StageBlock',
-    'CSPLayerWithTwoConv', 'DarknetBottleneck', 'BiFusion', 'TinySPPFCSPBlock', 'TinyShuffleDownSampleBlock'
+    'CSPLayerWithTwoConv', 'DarknetBottleneck', 'BiFusion', 'TinySPPFCSPBlock', 'SoftPool2d', 'TinyShuffleDownSampleBlock'
 ]
