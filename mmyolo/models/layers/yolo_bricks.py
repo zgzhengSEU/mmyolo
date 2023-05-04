@@ -916,6 +916,126 @@ class TinyDownSampleBlock(BaseModule):
 
         return self.final_conv(torch.cat([*main_outs[::-1], short_out], dim=1))
 
+@MODELS.register_module()
+class TinyShuffleDownSampleBlock(BaseModule):
+    """Down sample layer for YOLOv7-tiny.
+
+    Args:
+        in_channels (int): The input channels of this Module.
+        out_channels (int): The out channels of this Module.
+        middle_ratio (float): The scaling ratio of the middle layer
+            based on the in_channels. Defaults to 1.0.
+        kernel_sizes (int, tuple[int]): Sequential or number of kernel
+             sizes of pooling layers. Defaults to 3.
+        conv_cfg (dict): Config dict for convolution layer. Defaults to None.
+            which means using conv2d. Defaults to None.
+        norm_cfg (dict): Config dict for normalization layer.
+            Defaults to dict(type='BN', momentum=0.03, eps=0.001).
+        act_cfg (dict): Config dict for activation layer.
+            Defaults to dict(type='LeakyReLU', negative_slope=0.1).
+        init_cfg (dict or list[dict], optional): Initialization config dict.
+            Defaults to None.
+    """
+
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            middle_ratio: float = 1.0,
+            kernel_sizes: Union[int, Sequence[int]] = 3,
+            conv_cfg: OptConfigType = None,
+            norm_cfg: ConfigType = dict(type='BN', momentum=0.03, eps=0.001),
+            act_cfg: ConfigType = dict(type='LeakyReLU', negative_slope=0.1),
+            init_cfg: OptMultiConfig = None,
+            use_FReLU: bool = False,
+            TinyELAN_groups: int = 4):
+        super().__init__(init_cfg)
+
+        middle_channels = int(in_channels * middle_ratio)
+        self.TinyELAN_groups = TinyELAN_groups
+        
+        self.short_conv = ConvModule(
+            in_channels,
+            middle_channels,
+            1,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
+            groups=self.TinyELAN_groups,
+            act_cfg=dict(type='FReLU', inplace=True, in_channels=middle_channels) if use_FReLU else act_cfg)
+
+        self.main_convs = nn.ModuleList()
+        for i in range(3):
+            if i == 0:
+                self.main_convs.append(
+                    ConvModule(
+                        in_channels,
+                        middle_channels,
+                        1,
+                        conv_cfg=conv_cfg,
+                        norm_cfg=norm_cfg,
+                        groups=self.TinyELAN_groups,
+                        act_cfg=dict(type='FReLU', inplace=True, in_channels=middle_channels) if use_FReLU else act_cfg))
+            elif i == 1:
+                self.main_convs.append(
+                    ConvModule(
+                        middle_channels,
+                        middle_channels,
+                        kernel_sizes,
+                        padding=(kernel_sizes - 1) // 2,
+                        conv_cfg=conv_cfg,
+                        norm_cfg=norm_cfg,
+                        groups=self.TinyELAN_groups,
+                        act_cfg=dict(type='FReLU', inplace=True, in_channels=middle_channels) if use_FReLU else act_cfg))
+            elif i == 2:
+                self.main_convs.append(
+                    ConvModule(
+                        middle_channels,
+                        middle_channels,
+                        kernel_sizes,
+                        padding=(kernel_sizes - 1) // 2,
+                        conv_cfg=conv_cfg,
+                        norm_cfg=norm_cfg,
+                        groups=self.TinyELAN_groups,
+                        act_cfg=dict(type='FReLU', inplace=True, in_channels=middle_channels) if use_FReLU else act_cfg))
+                
+        self.final_conv = ConvModule(
+            middle_channels * 4,
+            out_channels,
+            1,
+            conv_cfg=conv_cfg,
+            norm_cfg=norm_cfg,
+            act_cfg=dict(type='FReLU', inplace=True, in_channels=out_channels) if use_FReLU else act_cfg)
+        
+        
+    @staticmethod
+    def shuffle_channels(x, groups):
+        """shuffle channels of a 4-D Tensor"""
+        batch_size, channels, height, width = x.size()
+        assert channels % groups == 0
+        channels_per_group = channels // groups
+        # split into groups
+        x = x.view(batch_size, groups, channels_per_group,
+                height, width)
+        # transpose 1, 2 axis
+        x = x.transpose(1, 2).contiguous()
+        # reshape into orignal
+        x = x.view(batch_size, channels, height, width)
+        return x
+    
+    
+    def forward(self, x) -> Tensor:
+        short_out = self.short_conv(x)
+
+        main_outs = []
+        for i, main_conv in enumerate(self.main_convs):
+            main_out = main_conv(x)
+            if i == 0 or i == 1:
+                main_out = self.shuffle_channels(main_out, self.TinyELAN_groups)
+            main_outs.append(main_out)
+            x = main_out
+
+        return self.final_conv(torch.cat([*main_outs[::-1], short_out], dim=1))
+
 
 @MODELS.register_module()
 class SPPFCSPBlock(BaseModule):
@@ -1042,7 +1162,7 @@ class SPPFCSPBlock(BaseModule):
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
             act_cfg=act_cfg)
-
+        
     def forward(self, x) -> Tensor:
         """Forward process
         Args:
@@ -1909,6 +2029,7 @@ class TinySPPFCSPBlock(BaseModule):
             conv_cfg=conv_cfg,
             norm_cfg=norm_cfg,
             act_cfg=dict(type='FReLU', inplace=True, in_channels=out_channels) if self.use_FReLU else act_cfg)
+    
     @staticmethod
     def shuffle_channels(x, groups):
         """shuffle channels of a 4-D Tensor"""

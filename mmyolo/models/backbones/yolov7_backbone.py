@@ -42,6 +42,8 @@ class YOLOv7Backbone(BaseBackbone):
     """
     _tiny_stage1_cfg_FReLU = dict(type='TinyDownSampleBlock', middle_ratio=0.5, use_FReLU=True)
     _tiny_stage2_4_cfg_FReLU = dict(type='TinyDownSampleBlock', middle_ratio=1.0, use_FReLU=True)
+    _tiny_stage1_cfg_shuffle = dict(type='TinyDownSampleBlock', middle_ratio=0.5)
+    _tiny_stage2_4_cfg_shuffle = dict(type='TinyDownSampleBlock', middle_ratio=1.0)
     _tiny_stage1_cfg = dict(type='TinyDownSampleBlock', middle_ratio=0.5)
     _tiny_stage2_4_cfg = dict(type='TinyDownSampleBlock', middle_ratio=1.0)
     _l_expand_channel_2x = dict(
@@ -100,6 +102,9 @@ class YOLOv7Backbone(BaseBackbone):
         'Tiny': [[64, 64, _tiny_stage1_cfg], [64, 128, _tiny_stage2_4_cfg],
                  [128, 256, _tiny_stage2_4_cfg],
                  [256, 512, _tiny_stage2_4_cfg]],
+        'Tiny_shuffle': [[64, 64, _tiny_stage1_cfg_shuffle], [64, 128, _tiny_stage2_4_cfg_shuffle],
+                 [128, 256, _tiny_stage2_4_cfg_shuffle],
+                 [256, 512, _tiny_stage2_4_cfg_shuffle]],
         'Tiny_FReLU': [[64, 64, _tiny_stage1_cfg_FReLU], [64, 128, _tiny_stage2_4_cfg_FReLU],
                  [128, 256, _tiny_stage2_4_cfg_FReLU],
                  [256, 512, _tiny_stage2_4_cfg_FReLU]],
@@ -140,6 +145,8 @@ class YOLOv7Backbone(BaseBackbone):
                  frozen_stages: int = -1,
                  use_softpool: bool = False, #
                  use_FReLU: bool = False, #
+                 use_shuffle: bool = False,
+                 shuffle_groups: int = 4,
                  plugins: Union[dict, List[dict]] = None,
                  norm_cfg: ConfigType = dict(
                      type='BN', momentum=0.03, eps=0.001),
@@ -149,9 +156,13 @@ class YOLOv7Backbone(BaseBackbone):
         assert arch in self.arch_settings.keys()
         self.arch = arch
         self.use_FReLU = use_FReLU
+        self.use_shuffle = use_shuffle
         if self.use_FReLU and self.arch == 'Tiny':
             self.arch = 'Tiny_FReLU'
+        if self.use_shuffle and self.arch == 'Tiny':
+            self.arch = 'Tiny_shuffle'
         self.use_softpool = use_softpool
+        
         super().__init__(
             self.arch_settings[arch],
             deepen_factor,
@@ -193,7 +204,7 @@ class YOLOv7Backbone(BaseBackbone):
                     stride=1,
                     norm_cfg=self.norm_cfg,
                     act_cfg=self.act_cfg))
-        elif self.arch == 'Tiny' or self.arch == 'Tiny_FReLU':
+        elif self.arch == 'Tiny' or self.arch == 'Tiny_FReLU' or self.arch == 'Tiny_shuffle':
             stem = nn.Sequential(
                 ConvModule(
                     3,
