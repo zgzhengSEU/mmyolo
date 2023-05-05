@@ -42,8 +42,8 @@ class YOLOv7Backbone(BaseBackbone):
     """
     _tiny_stage1_cfg_FReLU = dict(type='TinyDownSampleBlock', middle_ratio=0.5, use_FReLU=True)
     _tiny_stage2_4_cfg_FReLU = dict(type='TinyDownSampleBlock', middle_ratio=1.0, use_FReLU=True)
-    _tiny_stage1_cfg_shuffle = dict(type='TinyDownSampleBlock', middle_ratio=0.5)
-    _tiny_stage2_4_cfg_shuffle = dict(type='TinyDownSampleBlock', middle_ratio=1.0)
+    _tiny_stage1_cfg_shuffle = dict(type='TinyShuffleDownSampleBlock', middle_ratio=0.5)
+    _tiny_stage2_4_cfg_shuffle = dict(type='TinyShuffleDownSampleBlock', middle_ratio=1.0)
     _tiny_stage1_cfg = dict(type='TinyDownSampleBlock', middle_ratio=0.5)
     _tiny_stage2_4_cfg = dict(type='TinyDownSampleBlock', middle_ratio=1.0)
     _l_expand_channel_2x = dict(
@@ -157,14 +157,17 @@ class YOLOv7Backbone(BaseBackbone):
         self.arch = arch
         self.use_FReLU = use_FReLU
         self.use_shuffle = use_shuffle
-        if self.use_FReLU and self.arch == 'Tiny':
-            self.arch = 'Tiny_FReLU'
-        if self.use_shuffle and self.arch == 'Tiny':
-            self.arch = 'Tiny_shuffle'
+        self.shuffle_groups = shuffle_groups
+        if self.arch == 'Tiny':
+            if self.use_shuffle:
+                self.arch = 'Tiny_shuffle'
+            elif self.use_FReLU:
+                self.arch = 'Tiny_FReLU'
+           
         self.use_softpool = use_softpool
         
         super().__init__(
-            self.arch_settings[arch],
+            self.arch_settings[self.arch],
             deepen_factor,
             widen_factor,
             input_channels=input_channels,
@@ -245,6 +248,9 @@ class YOLOv7Backbone(BaseBackbone):
         stage_block_cfg = stage_block_cfg.copy()
         stage_block_cfg.setdefault('norm_cfg', self.norm_cfg)
         stage_block_cfg.setdefault('act_cfg', self.act_cfg)
+        
+        if self.use_shuffle:
+            stage_block_cfg.setdefault('shuffle_groups', self.shuffle_groups)
 
         stage_block_cfg['in_channels'] = in_channels
         stage_block_cfg['out_channels'] = out_channels
@@ -282,7 +288,7 @@ class YOLOv7Backbone(BaseBackbone):
                 padding=1,
                 norm_cfg=self.norm_cfg,
                 act_cfg=self.act_cfg)
-        elif self.arch == 'Tiny' or self.arch == 'Tiny_FReLU':
+        elif self.arch == 'Tiny' or self.arch == 'Tiny_FReLU' or self.arch == 'Tiny_shuffle':
             if stage_idx != 0:
                 if self.use_softpool:
                     downsample_layer = SoftPool2d(2, 2)

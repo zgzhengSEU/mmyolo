@@ -950,11 +950,11 @@ class TinyShuffleDownSampleBlock(BaseModule):
             act_cfg: ConfigType = dict(type='LeakyReLU', negative_slope=0.1),
             init_cfg: OptMultiConfig = None,
             use_FReLU: bool = False,
-            TinyELAN_groups: int = 4):
+            shuffle_groups: int = 4):
         super().__init__(init_cfg)
 
         middle_channels = int(in_channels * middle_ratio)
-        self.TinyELAN_groups = TinyELAN_groups
+        self.TinyELAN_groups = shuffle_groups
         
         self.short_conv = ConvModule(
             in_channels,
