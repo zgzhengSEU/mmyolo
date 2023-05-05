@@ -1929,7 +1929,7 @@ class TinySPPFCSPBlock(BaseModule):
         self.use_SPPF_mode = use_SPPF_mode #
         self.use_softpool = use_softpool
         mid_channels = int(2 * out_channels * expand_ratio)
-
+        # print(f'in:{in_channels}, mid:{mid_channels}, out:{out_channels}')
 
         if is_tiny_version:
             self.main_layers = ConvModule(

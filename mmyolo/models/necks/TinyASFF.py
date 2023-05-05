@@ -402,9 +402,9 @@ class ASFF(nn.Module):
                 level_2_resized = self.pool(level_2_resized)
 
                 level_3_resized = self.focus_channels(x_level_3)
-                level_3_resized = self.fuse_channels(level_3_resized, 2)
                 level_3_resized = self.pool(level_3_resized)
                 level_3_resized = self.focus_channels(level_3_resized)
+                level_3_resized = self.fuse_channels(level_3_resized, 2)
             elif self.level == 1:
                 level_0_resized = self.level_0_upsample(x_level_0)
                 level_0_resized = self.fuse_channels(level_0_resized, 2)
