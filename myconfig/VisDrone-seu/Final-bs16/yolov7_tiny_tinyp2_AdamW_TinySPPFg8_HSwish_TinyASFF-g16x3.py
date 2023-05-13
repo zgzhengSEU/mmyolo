@@ -1,20 +1,17 @@
 _base_ = './yolov7_l_origin.py'
 
-gpu_num = 1
 # ======================== wandb & run ==============================
-TAGS = ["p2","autoAdamW"]
-GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_p2chori_silu_ASFFsim_autoAdamW"
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "HSwish", "TinyASFF"]
+GROUP_NAME = "yolov7_tiny-final-bs16"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_HSwish_TinyASFF-g16x3"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
-    resume="allow",
-    id="fyhtvw5m",
-    allow_val_change=True,
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,
-    tags=TAGS
+    tags=TAGS,
+    mode="online"
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
@@ -52,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 32
+train_batch_size_per_gpu = 16
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -74,43 +71,34 @@ pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
         arch='Tiny', 
-        # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        act_cfg=dict(type='HSwish', inplace=True),
         out_indices=(1, 2, 3, 4)),
-    # backbone=dict(
-    #     arch='Tiny', 
-    #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-    #     out_indices=(1, 2, 3, 4),
-    #     plugins=[
-    #         dict(
-    #             cfg=dict(type='CBAM'),
-    #             stages=(True, True, True, True))
-    #     ]),    
     neck=[
         dict(
-            type='YOLOv7PAFPN',
+            use_carafe=False,
+            use_SPPF_mode=True,
+            sppf_groups=8,
+            type='YOLOv7PAFPN4',
             upsample_feats_cat_first=False,
             norm_cfg=norm_cfg,
             is_tiny_version=True,
             in_channels=[64, 128, 256, 512],
             out_channels=[32, 64, 128, 256], # 4 层时不会*2
-            block_cfg=dict(
-                type='TinyDownSampleBlock', middle_ratio=0.25),
-            # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-            act_cfg=dict(type='SiLU', inplace=True),
+            block_cfg=dict(type='TinyDownSampleBlock', middle_ratio=0.25),
+            act_cfg=dict(type='HSwish', inplace=True),
             use_repconv_outs=False),
         dict(
-            type='ASFFNeck4',
-            widen_factor=0.25,
-            use_att='ASFF_sim')],
+            type='TinyASFFNeck',
+            widen_factor=0.5,
+            head_num=4,
+            use_carafe=False,
+            groups=16, #
+            use_group_expand_nums=3,
+            use_att='TinyASFF')],
     bbox_head=dict(
         head_module=dict(
-            type='YOLOv7p6HeadModule',
-            in_channels=[32, 64, 128, 256],
-            main_out_channels = [64, 128, 256, 512],
-            use_aux = False,
-            featmap_strides=strides,
-            norm_cfg=norm_cfg,
-            act_cfg=dict(type='SiLU', inplace=True)),
+            in_channels = [64, 128, 256, 512],
+            featmap_strides=strides),
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
         loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
@@ -176,28 +164,12 @@ train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
 
-base_lr = (train_batch_size_per_gpu * gpu_num / 128) * _base_.base_lr
-# base_lr = _base_.base_lr
-weight_decay = _base_.weight_decay
-
-# optim_wrapper = dict(
-#     type='OptimWrapper',
-#     optimizer=dict(
-#         type='SGD',
-#         lr=base_lr,
-#         momentum=0.937,
-#         weight_decay=weight_decay,
-#         nesterov=True,
-#         batch_size_per_gpu=train_batch_size_per_gpu),
-#     constructor='YOLOv7OptimWrapperConstructor')
-
-# SGD -> AdamW
+base_lr = 0.004
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
     paramwise_cfg=dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
-
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))

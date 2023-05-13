@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["p2","autoAdamW", "silu", "TA", "ASFFsim", "SIOU"]
-GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "testresume"
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "SCA"]
+GROUP_NAME = "yolov7_tiny-final-bs16"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_SCAg8-neck"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -11,9 +11,10 @@ Wandb_init_kwargs = dict(
     group=GROUP_NAME,
     name=ALGO_NAME,
     tags=TAGS,
-    resume="allow",
-    id = "bxqggdm4",
-    allow_val_change=True
+    resume='allow',
+    id='0k35rcuh',
+    allow_val_change=True,
+    mode="online"
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
@@ -51,7 +52,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 32
+train_batch_size_per_gpu = 16
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -70,42 +71,36 @@ lr_factor = 0.01  # Learning rate scaling factor
 num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
+backbone_FReLU=False
+neck_FReLU=False
+sca_groups=8
 model = dict(
     backbone=dict(
         plugins=[
             dict(
-                cfg=dict(type='TripletAttention'),
+                cfg=dict(type='ShuffleCoordAttention', groups=sca_groups),
+                # act_cfg=dict(type='Mish', inplace=True),
                 stages=(True, True, True, True))
         ],
-        arch='Tiny', 
-        act_cfg=dict(type='SiLU', inplace=True),
+        arch='Tiny',
+        use_FReLU=backbone_FReLU,
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4)),
-    # backbone=dict(
-    #     arch='Tiny', 
-    #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-    #     out_indices=(1, 2, 3, 4),
-    #     plugins=[
-    #         dict(
-    #             cfg=dict(type='CBAM'),
-    #             stages=(True, True, True, True))
-    #     ]), 
-    neck=[
-        dict(
-            type='YOLOv7PAFPN4',
-            upsample_feats_cat_first=False,
-            norm_cfg=norm_cfg,
-            is_tiny_version=True,
-            in_channels=[64, 128, 256, 512],
-            out_channels=[32, 64, 128, 256], # 4 层时不会*2
-            block_cfg=dict(
-                type='TinyDownSampleBlock', middle_ratio=0.25),
-            # act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-            act_cfg=dict(type='SiLU', inplace=True),
-            use_repconv_outs=False),
-        dict(
-            type='ASFFNeck4',
-            widen_factor=0.5,
-            use_att='ASFF_sim')],   
+    neck=dict(
+        type='YOLOv7PAFPN4',
+        use_carafe=False,
+        use_FReLU=neck_FReLU,
+        use_SPPF_mode=True,
+        use_sca=True,
+        sca_groups=sca_groups,
+        sppf_groups=8, # 1: 7.779G 6.128M; 4: 7.582G 5.636M; 8: 7.549G 5.554M; 16: 7.533G 5.513M; 32: 7.525G 5.439M
+        is_tiny_version=True,
+        in_channels=[64, 128, 256, 512],
+        out_channels=[32, 64, 128, 256],
+        block_cfg=dict(
+            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25, use_FReLU=neck_FReLU),
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(
             in_channels = [64, 128, 256, 512],
@@ -113,9 +108,7 @@ model = dict(
         prior_generator=dict(base_sizes=anchors, strides=strides),
         obj_level_weights=obj_level_weights,
         loss_cls=dict(loss_weight=loss_cls_weight * (num_classes / 80 * 3 / num_det_layers)),
-        loss_bbox=dict(
-            iou_mode='siou',
-            loss_weight=loss_bbox_weight * (3 / num_det_layers)),
+        loss_bbox=dict(loss_weight=loss_bbox_weight * (3 / num_det_layers)),
         loss_obj=dict(loss_weight=loss_obj_weight * ((img_scale[0] / 640)**2 * 3 / num_det_layers))))
 
 mosiac4_pipeline = [
@@ -177,28 +170,12 @@ train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
 
-base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
-# base_lr = _base_.base_lr
-weight_decay = _base_.weight_decay
-
-# optim_wrapper = dict(
-#     type='OptimWrapper',
-#     optimizer=dict(
-#         type='SGD',
-#         lr=base_lr,
-#         momentum=0.937,
-#         weight_decay=weight_decay,
-#         nesterov=True,
-#         batch_size_per_gpu=train_batch_size_per_gpu),
-#     constructor='YOLOv7OptimWrapperConstructor')
-
-# SGD -> AdamW
+base_lr = 0.004
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
     paramwise_cfg=dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
-
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))

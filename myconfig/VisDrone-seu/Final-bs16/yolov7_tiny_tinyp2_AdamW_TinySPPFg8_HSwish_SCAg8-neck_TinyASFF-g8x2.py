@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "HSwish", "TinyASFF"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "HSwish", "SCA", "TinyASFF"]
 GROUP_NAME = "yolov7_tiny-final-bs16"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_HSwish_TinyASFF-g32x2"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_HSwish_SCAg8-neck_TinyASFF-g8x2"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -68,13 +68,21 @@ lr_factor = 0.01  # Learning rate scaling factor
 num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
+sca_groups=8
 model = dict(
     backbone=dict(
+        plugins=[
+            dict(
+                cfg=dict(type='ShuffleCoordAttention', groups=sca_groups),
+                stages=(True, True, True, True))
+        ],
         arch='Tiny', 
         act_cfg=dict(type='HSwish', inplace=True),
         out_indices=(1, 2, 3, 4)),
     neck=[
         dict(
+            use_sca=True,
+            sca_groups=sca_groups,
             use_carafe=False,
             use_SPPF_mode=True,
             sppf_groups=8,
@@ -92,7 +100,7 @@ model = dict(
             widen_factor=0.5,
             head_num=4,
             use_carafe=False,
-            groups=32, #
+            groups=8, #
             use_group_expand_nums=2,
             use_att='TinyASFF')],
     bbox_head=dict(

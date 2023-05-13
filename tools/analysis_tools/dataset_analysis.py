@@ -14,6 +14,8 @@ from prettytable import PrettyTable
 from mmyolo.registry import DATASETS
 from mmyolo.utils.misc import show_data_classes
 
+import matplotlib
+matplotlib.rc("font",family='WenQuanYi Zen Hei')
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -194,9 +196,10 @@ def show_bbox_wh_ratio(out_dir, fig_set, class_name, class_bbox_ratio):
 
     # Draw titles, labels and so on
     plt.xticks(rotation=fig_set['xticks_angle'])
-    plt.ylabel('Ratio of width to height of bbox')
-    plt.xlabel('Class name')
-    plt.title('Width to height ratio distribution of class and bbox instances')
+    
+    plt.ylabel('宽高比')
+    plt.xlabel('类别名称')
+    plt.title('每种类别中目标的宽高比分布')
 
     # Draw the max, min and median of wide data in violin chart
     for i in range(len(class_bbox_ratio)):
@@ -242,7 +245,7 @@ def show_bbox_area(out_dir, fig_set, area_rule, class_name, bbox_area_num):
     # Set the required labels and colors
     positions = np.arange(0, 2 * len(class_name), 2)
     width = 0.4
-    labels = ['Small', 'Mediun', 'Large', 'Huge']
+    labels = ['小', '中', '大', '巨大']
     colors = ['#438675', '#F7B469', '#6BA6DA', '#913221']
 
     # Draw designs
@@ -267,10 +270,11 @@ def show_bbox_area(out_dir, fig_set, area_rule, class_name, bbox_area_num):
     # Draw titles, labels and so on
     plt.xticks(rotation=fig_set['xticks_angle'])
     plt.xticks(positions + width * ((len(area_rule) - 2) / 2), class_name)
-    plt.ylabel('Class Area')
-    plt.xlabel('Class Name')
+    
+    plt.ylabel('目标数量')
+    plt.xlabel('类别名称')
     plt.title(
-        'Area and number of large, medium and small objects of each class')
+        '每种类别中小尺寸、中尺寸和大尺寸目标的数量')
 
     # Set and Draw Legend
     patches = [
@@ -381,13 +385,13 @@ def main():
     # 2.Prepare data
     # Drawing settings
     fig_all_set = {
-        'figsize': [15, 10],
+        'figsize': [14, 7],
         'fontsize': int(8 - 0.08 * len(dataset.metainfo['classes'])),
         'xticks_angle': 0,
         'out_name': cfg.dataset_type
     }
     fig_one_set = {
-        'figsize': [15, 10],
+        'figsize': [10, 10],
         'fontsize': 10,
         'xticks_angle': 0,
         'out_name': args.class_name

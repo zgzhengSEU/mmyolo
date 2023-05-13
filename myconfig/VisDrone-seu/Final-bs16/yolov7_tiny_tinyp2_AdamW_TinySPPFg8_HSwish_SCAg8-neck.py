@@ -3,7 +3,7 @@ _base_ = './yolov7_l_origin.py'
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "HSwish", "SCA"]
 GROUP_NAME = "yolov7_tiny-final-bs16"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_HSwish_SCAg4"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_HSwish_SCAg8-neck"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -68,7 +68,7 @@ lr_factor = 0.01  # Learning rate scaling factor
 num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
-sca_groups=4
+sca_groups=8
 model = dict(
     backbone=dict(
         plugins=[
@@ -83,7 +83,7 @@ model = dict(
         type='YOLOv7PAFPN4',
         use_carafe=False,
         use_SPPF_mode=True,
-        use_sca=False,
+        use_sca=True,
         sca_groups=sca_groups,
         sppf_groups=8, # 1: 7.779G 6.128M; 4: 7.582G 5.636M; 8: 7.549G 5.554M; 16: 7.533G 5.513M; 32: 7.525G 5.439M
         is_tiny_version=True,

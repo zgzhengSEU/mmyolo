@@ -1,16 +1,17 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["p2","autoAdamW", "silu"]
-GROUP_NAME = "yolov7_tiny"
-ALGO_NAME = "yolov7_tiny_tinyp2_silu"
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF"]
+GROUP_NAME = "yolov7_tiny-final-bs16"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8_softpool_FReLU-b-n"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,
     group=GROUP_NAME,
     name=ALGO_NAME,
-    tags=TAGS
+    tags=TAGS,
+    mode="online"
 )
 visualizer = dict(vis_backends = [dict(type='LocalVisBackend'), dict(type='WandbVisBackend', init_kwargs=Wandb_init_kwargs)])
 
@@ -48,7 +49,7 @@ DE = [
 anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
-train_batch_size_per_gpu = 32
+train_batch_size_per_gpu = 16
 
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
@@ -67,28 +68,27 @@ lr_factor = 0.01  # Learning rate scaling factor
 num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
+backbone_FReLU=True
+neck_FReLU=True
 model = dict(
     backbone=dict(
-        arch='Tiny', 
-        act_cfg=dict(type='SiLU', inplace=True),
+        use_softpool=True,
+        use_FReLU=backbone_FReLU,
+        arch='Tiny',
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4)),
-    # backbone=dict(
-    #     arch='Tiny', 
-    #     act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-    #     out_indices=(1, 2, 3, 4),
-    #     plugins=[
-    #         dict(
-    #             cfg=dict(type='CBAM'),
-    #             stages=(True, True, True, True))
-    #     ]),    
     neck=dict(
         type='YOLOv7PAFPN4',
+        use_FReLU=neck_FReLU,
+        use_carafe=False,
+        use_SPPF_mode=True,
+        use_softpool=True,
+        sppf_groups=8, # 1: 7.779G 6.128M; 4: 7.582G 5.636M; 8: 7.549G 5.554M; 16: 7.533G 5.513M; 32: 7.525G 5.439M
         is_tiny_version=True,
         in_channels=[64, 128, 256, 512],
         out_channels=[32, 64, 128, 256],
-        block_cfg=dict(
-            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
-        act_cfg=dict(type='SiLU', inplace=True),
+        block_cfg=dict(_delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25, use_FReLU=neck_FReLU),
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(
@@ -159,28 +159,12 @@ train_dataloader = dict(
     batch_size=train_batch_size_per_gpu,
     dataset=dict(pipeline=train_pipeline))
 
-base_lr = (train_batch_size_per_gpu / 128) * _base_.base_lr
-# base_lr = _base_.base_lr
-weight_decay = _base_.weight_decay
-
-# optim_wrapper = dict(
-#     type='OptimWrapper',
-#     optimizer=dict(
-#         type='SGD',
-#         lr=base_lr,
-#         momentum=0.937,
-#         weight_decay=weight_decay,
-#         nesterov=True,
-#         batch_size_per_gpu=train_batch_size_per_gpu),
-#     constructor='YOLOv7OptimWrapperConstructor')
-
-# SGD -> AdamW
+base_lr = 0.004
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
     paramwise_cfg=dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
-
 
 default_hooks = dict(param_scheduler=dict(lr_factor=lr_factor))
