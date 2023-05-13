@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "SPP"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF"]
 GROUP_NAME = "yolov7_tiny-final-bs64"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_SPP"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8-softpool"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -50,6 +50,7 @@ anchors = v5_k_means # 修改anchor
 
 # ---- data related -------
 train_batch_size_per_gpu = 64
+
 # Data augmentation
 max_translate_ratio = 0.1  # YOLOv5RandomAffine
 scaling_ratio_range = (0.5, 1.6)  # YOLOv5RandomAffine
@@ -69,14 +70,16 @@ img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
 model = dict(
     backbone=dict(
-        arch='Tiny', 
+        use_softpool=True,
+        arch='Tiny',
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4)),
     neck=dict(
         type='YOLOv7PAFPN4',
         use_carafe=False,
-        sppf_groups=1, # 1: 7.779G 6.128M; 4: 7.582G 5.636M; 8: 7.549G 5.554M; 16: 7.533G 5.513M
-        use_SPPF_mode=False,
+        use_SPPF_mode=True,
+        use_softpool=True,
+        sppf_groups=8, # 1: 7.779G 6.128M; 4: 7.582G 5.636M; 8: 7.549G 5.554M; 16: 7.533G 5.513M; 32: 7.525G 5.439M
         is_tiny_version=True,
         in_channels=[64, 128, 256, 512],
         out_channels=[32, 64, 128, 256],

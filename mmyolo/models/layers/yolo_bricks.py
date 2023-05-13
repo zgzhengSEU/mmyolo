@@ -1877,12 +1877,15 @@ class SoftPool2d(nn.Module):
         return x
 
     def soft_pool2d(self, x, kernel_size=2, stride=None):
-        kernel_size = _pair(kernel_size)
-        stride = kernel_size if stride is None else _pair(stride)
+        origin_dtype = x.dtype
         with torch.cuda.amp.autocast(enabled=False):
-            e_x = torch.sum(torch.exp(x.to(dtype= torch.float32)), dim=1, keepdim=True)
+            x = x.to(dtype=torch.float32)
+            kernel_size = _pair(kernel_size)
+            stride = kernel_size if stride is None else _pair(stride)
+            e_x = torch.sum(torch.exp(x), dim=1, keepdim=True)
             out = F.avg_pool2d(x.mul(e_x), kernel_size, stride=stride, padding=self.padding).mul_(sum(kernel_size)).div_(
-                F.avg_pool2d(e_x, kernel_size, stride=stride, padding=self.padding).mul_(sum(kernel_size))).to(dtype=x.dtype)
+                F.avg_pool2d(e_x, kernel_size, stride=stride, padding=self.padding).mul_(sum(kernel_size)))
+        out = out.to(dtype=origin_dtype)
         return out
     
 @MODELS.register_module()
