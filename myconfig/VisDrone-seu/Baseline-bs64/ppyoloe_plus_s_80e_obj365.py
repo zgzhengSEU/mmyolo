@@ -3,7 +3,7 @@ _base_ = ['../../../configs/_base_/default_runtime.py', '../../../configs/_base_
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "ppyoloe_plus_s"]
 GROUP_NAME = "Baseline"
-ALGO_NAME = "ppyoloe_plus_s"
+ALGO_NAME = "ppyoloe_plus_s_80e_obj365"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -19,7 +19,7 @@ import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
 
-load_from = "https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_plus_s_fast_8xb8-80e_coco/ppyoloe_plus_s_fast_8xb8-80e_coco_20230101_154052-9fee7619.pth"
+# load_from = "https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_plus_s_fast_8xb8-80e_coco/ppyoloe_plus_s_fast_8xb8-80e_coco_20230101_154052-9fee7619.pth"
 # ========================modified parameters========================
 
 # dataset settings
@@ -58,7 +58,7 @@ val_num_workers = 2
 
 # The pretrained model is geted and converted from official PPYOLOE.
 # https://github.com/PaddlePaddle/PaddleDetection/blob/release/2.5/configs/ppyoloe/README.md
-# load_from = 'https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_pretrain/ppyoloe_plus_s_obj365_pretrained-bcfe8478.pth'  # noqa
+load_from = 'https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_pretrain/ppyoloe_plus_s_obj365_pretrained-bcfe8478.pth'  # noqa
 
 # persistent_workers must be False if num_workers is 0.
 persistent_workers = True
