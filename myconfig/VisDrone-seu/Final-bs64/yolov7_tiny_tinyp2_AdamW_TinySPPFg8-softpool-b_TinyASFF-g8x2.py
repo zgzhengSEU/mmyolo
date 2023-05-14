@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "SCA", "TinyASFF"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "TinyASFF"]
 GROUP_NAME = "yolov7_tiny-final-bs64"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8-softpool_SCAg8-neck_TinyASFF-g8x2"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8-softpool-b_TinyASFF-g8x2"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -68,23 +68,15 @@ lr_factor = 0.01  # Learning rate scaling factor
 num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
-sca_groups=8
 model = dict(
     backbone=dict(
-        plugins=[
-            dict(
-                cfg=dict(type='ShuffleCoordAttention', groups=sca_groups),
-                stages=(True, True, True, True))
-        ],
         use_softpool=True,
         arch='Tiny',
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4)),
     neck=[
         dict(
-            use_softpool=True,
-            use_sca=True,
-            sca_groups=sca_groups,
+            use_softpool=False,
             use_carafe=False,
             use_SPPF_mode=True,
             sppf_groups=8,
@@ -178,7 +170,6 @@ base_lr = 0.004
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
-    clip_grad=dict(max_norm=1.0),
     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
     paramwise_cfg=dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))

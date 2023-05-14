@@ -1,9 +1,9 @@
 _base_ = './yolov7_l_origin.py'
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF", "SCA", "TinyASFF"]
+TAGS = ["SEU", "load", "tinyp2","AdamW", "TinySPPF"]
 GROUP_NAME = "yolov7_tiny-final-bs64"
-ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8-softpool_SCAg8-neck_TinyASFF-g8x2"
+ALGO_NAME = "yolov7_tiny_tinyp2_AdamW_TinySPPFg8-softpool-b"
 DATASET_NAME = "VisDrone"
 
 Wandb_init_kwargs = dict(
@@ -68,43 +68,25 @@ lr_factor = 0.01  # Learning rate scaling factor
 num_classes = _base_.num_classes
 img_scale = _base_.img_scale
 pre_transform = _base_.pre_transform
-sca_groups=8
 model = dict(
     backbone=dict(
-        plugins=[
-            dict(
-                cfg=dict(type='ShuffleCoordAttention', groups=sca_groups),
-                stages=(True, True, True, True))
-        ],
         use_softpool=True,
         arch='Tiny',
         act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
         out_indices=(1, 2, 3, 4)),
-    neck=[
-        dict(
-            use_softpool=True,
-            use_sca=True,
-            sca_groups=sca_groups,
-            use_carafe=False,
-            use_SPPF_mode=True,
-            sppf_groups=8,
-            type='YOLOv7PAFPN4',
-            upsample_feats_cat_first=False,
-            norm_cfg=norm_cfg,
-            is_tiny_version=True,
-            in_channels=[64, 128, 256, 512],
-            out_channels=[32, 64, 128, 256],
-            block_cfg=dict(type='TinyDownSampleBlock', middle_ratio=0.25),
-            act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-            use_repconv_outs=False),
-        dict(
-            type='TinyASFFNeck',
-            widen_factor=0.5,
-            head_num=4,
-            use_carafe=False,
-            groups=8, #
-            use_group_expand_nums=2,
-            use_att='TinyASFF')],
+    neck=dict(
+        type='YOLOv7PAFPN4',
+        use_carafe=False,
+        use_SPPF_mode=True,
+        use_softpool=False,
+        sppf_groups=8, # 1: 7.779G 6.128M; 4: 7.582G 5.636M; 8: 7.549G 5.554M; 16: 7.533G 5.513M; 32: 7.525G 5.439M
+        is_tiny_version=True,
+        in_channels=[64, 128, 256, 512],
+        out_channels=[32, 64, 128, 256],
+        block_cfg=dict(
+            _delete_=True, type='TinyDownSampleBlock', middle_ratio=0.25),
+        act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+        use_repconv_outs=False),
     bbox_head=dict(
         head_module=dict(
             in_channels = [64, 128, 256, 512],
@@ -178,7 +160,6 @@ base_lr = 0.004
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
-    clip_grad=dict(max_norm=1.0),
     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
     paramwise_cfg=dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))

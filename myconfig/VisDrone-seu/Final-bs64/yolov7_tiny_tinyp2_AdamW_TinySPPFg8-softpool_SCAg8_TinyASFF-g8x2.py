@@ -178,6 +178,7 @@ base_lr = 0.004
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
+    clip_grad=dict(max_norm=10.0),
     optimizer=dict(type='AdamW', lr=base_lr, weight_decay=0.05),
     paramwise_cfg=dict(
         norm_decay_mult=0, bias_decay_mult=0, bypass_duplicate=True))
