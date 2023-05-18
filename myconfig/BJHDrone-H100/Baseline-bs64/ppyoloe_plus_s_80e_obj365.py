@@ -1,10 +1,10 @@
 _base_ = ['../../../configs/_base_/default_runtime.py', '../../../configs/_base_/det_p5_tta.py']
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "ppyoloe_s"]
-GROUP_NAME = "Baseline"
-ALGO_NAME = "ppyoloe_s_300e_coco"
-DATASET_NAME = "VisDrone"
+TAGS = ["SEU", "load", "ppyoloe_plus_s"]
+GROUP_NAME = "Baseline_visdronepretrain"
+ALGO_NAME = "ppyoloe_plus_s_80e_obj365"
+DATASET_NAME = "BJHDrone"
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,
@@ -48,7 +48,7 @@ train_num_workers = 8
 img_scale = (640, 640)  # width, height
 deepen_factor = 0.33
 widen_factor = 0.5
-max_epochs = 300
+max_epochs = 80
 
 save_epoch_intervals = 1
 
@@ -58,13 +58,13 @@ val_num_workers = 2
 
 # The pretrained model is geted and converted from official PPYOLOE.
 # https://github.com/PaddlePaddle/PaddleDetection/blob/release/2.5/configs/ppyoloe/README.md
-checkpoint = 'https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_pretrain/cspresnet_s_imagenet1k_pretrained-2be81763.pth'  # noqa
+load_from = 'https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_pretrain/ppyoloe_plus_s_obj365_pretrained-bcfe8478.pth'  # noqa
 
 # persistent_workers must be False if num_workers is 0.
 persistent_workers = True
 
 # Base learning rate for optim_wrapper
-base_lr = 0.01
+base_lr = 0.001
 
 strides = [8, 16, 32]
 
@@ -83,20 +83,15 @@ model = dict(
                 random_interp=True,
                 keep_ratio=False)
         ],
-        mean=[0.485 * 255, 0.456 * 255, 0.406 * 255],
-        std=[0.229 * 255., 0.224 * 255., 0.225 * 255.],
+        mean=[0., 0., 0.],
+        std=[255., 255., 255.],
         bgr_to_rgb=True),
     backbone=dict(
-        init_cfg=dict(
-            type='Pretrained',
-            prefix='backbone.',
-            checkpoint=checkpoint,
-            map_location='cpu'),
         type='PPYOLOECSPResNet',
         deepen_factor=deepen_factor,
         widen_factor=widen_factor,
         block_cfg=dict(
-            type='PPYOLOEBasicBlock', shortcut=True, use_alpha=False),
+            type='PPYOLOEBasicBlock', shortcut=True, use_alpha=True),
         norm_cfg=dict(type='BN', momentum=0.1, eps=1e-5),
         act_cfg=dict(type='SiLU', inplace=True),
         attention_cfg=dict(
@@ -153,7 +148,7 @@ model = dict(
             reduction='mean',
             loss_weight=0.5 / 4)),
     train_cfg=dict(
-        initial_epoch=100,
+        initial_epoch=30,
         initial_assigner=dict(
             type='BatchATSSAssigner',
             num_classes=num_classes,

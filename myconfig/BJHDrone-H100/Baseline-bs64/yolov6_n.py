@@ -2,9 +2,9 @@ _base_ = './base_config/yolov6_s_syncbn_fast_8xb32-400e_coco.py'
 
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "yolov6_n"]
-GROUP_NAME = "Baseline"
+GROUP_NAME = "Baseline_visdronepretrain"
 ALGO_NAME = "yolov6_n"
-DATASET_NAME = "VisDrone"
+DATASET_NAME = "BJHDrone"
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,

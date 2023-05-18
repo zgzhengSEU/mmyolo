@@ -1,10 +1,10 @@
 _base_ = ['../../../configs/_base_/default_runtime.py', '../../../configs/_base_/det_p5_tta.py']
 
 # ======================== wandb & run ==============================
-TAGS = ["SEU", "load", "ppyoloe_s"]
-GROUP_NAME = "Baseline"
-ALGO_NAME = "ppyoloe_s_300e_coco"
-DATASET_NAME = "VisDrone"
+TAGS = ["SEU", "load", "ppyoloe_plus_s"]
+GROUP_NAME = "Baseline_visdronepretrain"
+ALGO_NAME = "ppyoloe_plus_s_300e_coco"
+DATASET_NAME = "BJHDrone"
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,
@@ -19,7 +19,7 @@ import datetime as dt
 NOW_TIME = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 work_dir = f"runs/{DATASET_NAME}/{ALGO_NAME}/{NOW_TIME}"
 
-# load_from = "https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_plus_s_fast_8xb8-80e_coco/ppyoloe_plus_s_fast_8xb8-80e_coco_20230101_154052-9fee7619.pth"
+load_from = "https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_plus_s_fast_8xb8-80e_coco/ppyoloe_plus_s_fast_8xb8-80e_coco_20230101_154052-9fee7619.pth"
 # ========================modified parameters========================
 
 # dataset settings
@@ -58,7 +58,7 @@ val_num_workers = 2
 
 # The pretrained model is geted and converted from official PPYOLOE.
 # https://github.com/PaddlePaddle/PaddleDetection/blob/release/2.5/configs/ppyoloe/README.md
-checkpoint = 'https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_pretrain/cspresnet_s_imagenet1k_pretrained-2be81763.pth'  # noqa
+# load_from = 'https://download.openmmlab.com/mmyolo/v0/ppyoloe/ppyoloe_pretrain/ppyoloe_plus_s_obj365_pretrained-bcfe8478.pth'  # noqa
 
 # persistent_workers must be False if num_workers is 0.
 persistent_workers = True
@@ -87,16 +87,11 @@ model = dict(
         std=[0.229 * 255., 0.224 * 255., 0.225 * 255.],
         bgr_to_rgb=True),
     backbone=dict(
-        init_cfg=dict(
-            type='Pretrained',
-            prefix='backbone.',
-            checkpoint=checkpoint,
-            map_location='cpu'),
         type='PPYOLOECSPResNet',
         deepen_factor=deepen_factor,
         widen_factor=widen_factor,
         block_cfg=dict(
-            type='PPYOLOEBasicBlock', shortcut=True, use_alpha=False),
+            type='PPYOLOEBasicBlock', shortcut=True, use_alpha=True),
         norm_cfg=dict(type='BN', momentum=0.1, eps=1e-5),
         act_cfg=dict(type='SiLU', inplace=True),
         attention_cfg=dict(

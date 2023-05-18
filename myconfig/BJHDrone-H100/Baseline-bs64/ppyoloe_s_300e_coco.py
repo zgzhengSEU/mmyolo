@@ -2,9 +2,9 @@ _base_ = ['../../../configs/_base_/default_runtime.py', '../../../configs/_base_
 
 # ======================== wandb & run ==============================
 TAGS = ["SEU", "load", "ppyoloe_s"]
-GROUP_NAME = "Baseline"
+GROUP_NAME = "Baseline_visdronepretrain"
 ALGO_NAME = "ppyoloe_s_300e_coco"
-DATASET_NAME = "VisDrone"
+DATASET_NAME = "BJHDrone"
 
 Wandb_init_kwargs = dict(
     project=DATASET_NAME,
